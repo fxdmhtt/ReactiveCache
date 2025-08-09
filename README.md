@@ -5,7 +5,7 @@
 [![Docs.rs](https://docs.rs/reactivecache/badge.svg)](https://docs.rs/reactivecache)
 [![License](https://img.shields.io/crates/l/reactivecache.svg)](LICENSE)
 
-A lightweight, dependency-aware caching library with automatic invalidation and lazy recomputation.
+A lightweight, dependency-aware memoization library with automatic invalidation and lazy recomputation.
 
 ---
 
