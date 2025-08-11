@@ -20,6 +20,15 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
+    if !sig.inputs.is_empty() {
+        return syn::Error::new_spanned(
+            &sig.inputs,
+            "The memo macro can only be used with `get` function without any parameters.",
+        )
+        .to_compile_error()
+        .into();
+    }
+
     let expanded = quote! {
         #vis #sig
         where #output_ty: Clone + 'static
