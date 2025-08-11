@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::{ItemFn, ReturnType, parse_macro_input};
+use quote::{format_ident, quote};
+use syn::{ItemFn, ReturnType, parse_macro_input, parse_quote};
 
 #[proc_macro_attribute]
 pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -29,8 +29,20 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .into();
     }
 
+    let _ident = format_ident!("_{}", sig.ident);
+    let mut _sig = sig.clone();
+    _sig.ident = _ident.clone();
+    _sig.inputs
+        .insert(0, parse_quote! { op: cache::MemoOperator });
+
     let expanded = quote! {
         #vis #sig
+        where #output_ty: Clone + 'static
+        {
+            #_ident(cache::MemoOperator::Memo)
+        }
+
+        #vis #_sig
         where #output_ty: Clone + 'static
         {
             unsafe {

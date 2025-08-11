@@ -1,6 +1,10 @@
 use lru::LruCache;
 use std::{any::Any, num::NonZeroUsize, rc::Rc};
 
+pub enum MemoOperator {
+    Memo,
+}
+
 const CACHE_CAP: usize = 128;
 
 static mut CACHE: Option<LruCache<usize, Rc<dyn Any>>> = None;
