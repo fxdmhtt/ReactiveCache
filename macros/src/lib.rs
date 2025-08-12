@@ -9,7 +9,6 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let vis = &func.vis;
     let sig = &func.sig;
     let block = &func.block;
-    let ident = &func.sig.ident;
 
     let output_ty = match &sig.output {
         ReturnType::Type(_, ty) => ty.clone(),
@@ -45,16 +44,14 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #vis #_sig
         where #output_ty: Clone + 'static
         {
-            unsafe {
-                let key = #ident as usize;
-                let rc = if let Some(rc) = cache::touch(key) {
-                    rc
-                } else {
-                    let result: #output_ty = (|| #block)();
-                    cache::store_in_cache(key, result)
-                };
-                (*rc).clone()
-            }
+            let key = #_ident as usize;
+            let rc = if let Some(rc) = cache::touch(key) {
+                rc
+            } else {
+                let result: #output_ty = (|| #block)();
+                cache::store_in_cache(key, result)
+            };
+            (*rc).clone()
         }
     };
 
