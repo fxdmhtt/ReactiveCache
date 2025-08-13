@@ -9,6 +9,7 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let vis = &func.vis;
     let sig = &func.sig;
     let block = &func.block;
+    let ident = &func.sig.ident;
 
     let output_ty = match &sig.output {
         ReturnType::Type(_, ty) => ty.clone(),
@@ -28,30 +29,52 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .into();
     }
 
-    let _ident = format_ident!("_{}", sig.ident);
-    let mut _sig = sig.clone();
-    _sig.ident = _ident.clone();
-    _sig.inputs
+    let op_ident = format_ident!("{}_op", ident);
+    let mut op_sig = sig.clone();
+    op_sig.ident = op_ident.clone();
+    op_sig
+        .inputs
         .insert(0, parse_quote! { op: cache::MemoOperator });
+    op_sig.output = parse_quote! { -> () };
 
     let expanded = quote! {
         #vis #sig
         where #output_ty: Clone + 'static
         {
-            #_ident(cache::MemoOperator::Memo)
-        }
+            #op_ident(cache::MemoOperator::Memo(cache::Trace::Push));
 
-        #vis #_sig
-        where #output_ty: Clone + 'static
-        {
-            let key = #_ident as usize;
+            let key: cache::OperatorFunc = #op_ident;
             let rc = if let Some(rc) = cache::touch(key) {
                 rc
             } else {
                 let result: #output_ty = (|| #block)();
                 cache::store_in_cache(key, result)
             };
+
+            #op_ident(cache::MemoOperator::Memo(cache::Trace::Pop));
+
             (*rc).clone()
+        }
+
+        #vis #op_sig
+        {
+            static mut dependents: Vec<cache::OperatorFunc> = Vec::new();
+            match op {
+                cache::MemoOperator::Memo(cache::Trace::Push) => {
+                    if let Some(last) = cache::call_stack().peek_mut() {
+                        unsafe { dependents.push(*last) };
+                    }
+                    cache::call_stack().push(#op_ident);
+                },
+                cache::MemoOperator::Memo(cache::Trace::Pop) => {
+                    cache::call_stack().pop();
+                },
+                cache::MemoOperator::Pop => {
+                    for dependent in unsafe { dependents.iter() } {
+                        cache::remove_from_cache(*dependent);
+                    }
+                },
+            }
         }
     };
 

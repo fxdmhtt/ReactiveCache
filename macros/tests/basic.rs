@@ -1,14 +1,22 @@
+#![feature(vec_peek_mut)]
+
 use macros::memo;
 
 #[memo]
 pub fn get_number() -> i32 {
-    println!("Calculate i32");
+    static mut INVOKED: bool = false;
+    assert!(!unsafe { INVOKED });
+    unsafe { INVOKED = true };
+
     42
 }
 
 #[memo]
 pub fn get_text() -> String {
-    println!("Calculate String");
+    static mut INVOKED: bool = false;
+    assert!(!unsafe { INVOKED });
+    unsafe { INVOKED = true };
+
     "hello".to_string()
 }
 
