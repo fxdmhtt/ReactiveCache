@@ -72,6 +72,7 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 cache::MemoOperator::Pop => {
                     for dependent in unsafe { dependents.iter() } {
                         cache::remove_from_cache(*dependent);
+                        dependent(cache::MemoOperator::Pop);
                     }
                 },
             }
