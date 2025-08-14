@@ -38,12 +38,16 @@ pub fn derived_c() -> i32 {
     source_a() + source_b()
 }
 
+pub fn derived__() -> i32 {
+    derived_c()
+}
+
 #[memo]
 pub fn derived_d() -> i32 {
     assert!(!SOURCE_D_CALLED.get());
     SOURCE_D_CALLED.set(true);
 
-    derived_c() * 2
+    derived__() * 2
 }
 
 #[memo]
@@ -57,6 +61,8 @@ pub fn derived_e() -> i32 {
 // source_a   source_b
 //    \         /  \
 //     derived_c    derived_e
+//         |
+//     derived__
 //         |
 //     derived_d
 
