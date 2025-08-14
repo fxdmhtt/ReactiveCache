@@ -58,4 +58,8 @@ where
 
         true
     }
+
+    pub fn update(&'static mut self) -> bool {
+        self.set((self.f)())
+    }
 }
