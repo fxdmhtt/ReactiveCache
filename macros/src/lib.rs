@@ -32,13 +32,12 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let memo_ident = format_ident!("{}", ident.to_string().to_uppercase());
 
     let expanded = quote! {
-        static mut #memo_ident: Option<cache::Memo<#output_ty, fn() -> #output_ty>> = None;
+        static mut #memo_ident: once_cell::unsync::Lazy<cache::Memo<#output_ty, fn() -> #output_ty>> = once_cell::unsync::Lazy::new(|| cache::Memo::new(|| #block));
 
         #vis #sig
         where #output_ty: Clone + 'static
         {
-            #[allow(static_mut_refs)]
-            unsafe { &mut #memo_ident }.get_or_insert_with(|| cache::Memo::new(|| #block)).get()
+            unsafe { (*#memo_ident).get() }
         }
     };
 

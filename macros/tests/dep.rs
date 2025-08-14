@@ -71,10 +71,7 @@ fn complex_dependency_memo_test() {
     assert_eq!(d2, d1);
     assert_eq!(e2, e1);
 
-    #[allow(static_mut_refs)]
-    if let Some(memo) = unsafe { &SOURCE_A } {
-        memo.invalidate();
-    }
+    unsafe { (*SOURCE_A).invalidate() };
 
     unsafe { SOURCE_A_CALLED = false };
     unsafe { SOURCE_C_CALLED = false };
