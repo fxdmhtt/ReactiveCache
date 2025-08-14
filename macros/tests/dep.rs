@@ -86,13 +86,19 @@ fn complex_dependency_memo_test() {
     assert_eq!(d1, 30); // 15 * 2
     assert_eq!(e1, 2); // 5 - 3
 
-    A.set(10);
-
     SOURCE_A_CALLED.set(false);
     SOURCE_B_CALLED.set(false);
     SOURCE_C_CALLED.set(false);
     SOURCE_D_CALLED.set(false);
     SOURCE_E_CALLED.set(false);
+
+    A.set(10);
+
+    assert!(!SOURCE_A_CALLED.get());
+    assert!(!SOURCE_B_CALLED.get());
+    assert!(!SOURCE_C_CALLED.get());
+    assert!(!SOURCE_D_CALLED.get());
+    assert!(!SOURCE_E_CALLED.get());
 
     let e2 = derived_e();
     let d2 = derived_d();
@@ -108,13 +114,19 @@ fn complex_dependency_memo_test() {
     assert_eq!(d2, d1);
     assert_eq!(e2, e1);
 
-    unsafe { SOURCE_A.invalidate() };
-
     SOURCE_A_CALLED.set(false);
     SOURCE_B_CALLED.set(false);
     SOURCE_C_CALLED.set(false);
     SOURCE_D_CALLED.set(false);
     SOURCE_E_CALLED.set(false);
+
+    unsafe { SOURCE_A.invalidate() };
+
+    assert!(!SOURCE_A_CALLED.get());
+    assert!(!SOURCE_B_CALLED.get());
+    assert!(!SOURCE_C_CALLED.get());
+    assert!(!SOURCE_D_CALLED.get());
+    assert!(!SOURCE_E_CALLED.get());
 
     let e3 = derived_e();
     assert!(!SOURCE_A_CALLED.get());
@@ -156,13 +168,19 @@ fn signal_set_unchanged_test() {
     assert_eq!(d1, 30); // 15 * 2
     assert_eq!(e1, 2); // 5 - 3
 
-    unsafe { SOURCE_A.set(10) };
-
     SOURCE_A_CALLED.set(false);
     SOURCE_B_CALLED.set(false);
     SOURCE_C_CALLED.set(false);
     SOURCE_D_CALLED.set(false);
     SOURCE_E_CALLED.set(false);
+
+    unsafe { SOURCE_A.set(10) };
+
+    assert!(!SOURCE_A_CALLED.get());
+    assert!(!SOURCE_B_CALLED.get());
+    assert!(!SOURCE_C_CALLED.get());
+    assert!(!SOURCE_D_CALLED.get());
+    assert!(!SOURCE_E_CALLED.get());
 
     let e2 = derived_e();
     let d2 = derived_d();
@@ -195,13 +213,19 @@ fn signal_set_value_test() {
     assert_eq!(d1, 30); // 15 * 2
     assert_eq!(e1, 2); // 5 - 3
 
-    unsafe { SOURCE_A.set(20) };
-
     SOURCE_A_CALLED.set(false);
     SOURCE_B_CALLED.set(false);
     SOURCE_C_CALLED.set(false);
     SOURCE_D_CALLED.set(false);
     SOURCE_E_CALLED.set(false);
+
+    unsafe { SOURCE_A.set(20) };
+
+    assert!(!SOURCE_A_CALLED.get());
+    assert!(!SOURCE_B_CALLED.get());
+    assert!(!SOURCE_C_CALLED.get());
+    assert!(!SOURCE_D_CALLED.get());
+    assert!(!SOURCE_E_CALLED.get());
 
     let e2 = derived_e();
     assert!(!SOURCE_A_CALLED.get());
