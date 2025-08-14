@@ -61,13 +61,13 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
             static mut dependents: Vec<cache::OperatorFunc> = Vec::new();
             match op {
                 cache::MemoOperator::Memo(cache::Trace::Push) => {
-                    if let Some(last) = cache::call_stack().peek_mut() {
-                        unsafe { dependents.push(*last) };
+                    if let Some(last) = cache::call_stack::last() {
+                        unsafe { dependents.push(last.clone()) };
                     }
-                    cache::call_stack().push(#op_ident);
+                    cache::call_stack::push(#op_ident);
                 },
                 cache::MemoOperator::Memo(cache::Trace::Pop) => {
-                    cache::call_stack().pop();
+                    cache::call_stack::pop();
                 },
                 cache::MemoOperator::Pop => {
                     for dependent in unsafe { dependents.iter() } {

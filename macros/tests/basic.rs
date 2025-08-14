@@ -1,5 +1,3 @@
-#![feature(vec_peek_mut)]
-
 use macros::memo;
 
 #[memo]

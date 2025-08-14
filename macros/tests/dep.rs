@@ -1,5 +1,3 @@
-#![feature(vec_peek_mut)]
-
 use macros::memo;
 
 static mut SOURCE_A_CALLED: bool = false;
