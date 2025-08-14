@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{ItemFn, ReturnType, parse_macro_input, parse_quote};
+use syn::{ItemFn, ReturnType, parse_macro_input};
 
 #[proc_macro_attribute]
 pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -29,53 +29,16 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .into();
     }
 
-    let op_ident = format_ident!("{}_op", ident);
-    let mut op_sig = sig.clone();
-    op_sig.ident = op_ident.clone();
-    op_sig
-        .inputs
-        .insert(0, parse_quote! { op: cache::MemoOperator });
-    op_sig.output = parse_quote! { -> () };
+    let memo_ident = format_ident!("{}", ident.to_string().to_uppercase());
 
     let expanded = quote! {
+        static mut #memo_ident: Option<cache::Memo<#output_ty, fn() -> #output_ty>> = None;
+
         #vis #sig
         where #output_ty: Clone + 'static
         {
-            #op_ident(cache::MemoOperator::Memo(cache::Trace::Push));
-
-            let key: cache::OperatorFunc = #op_ident;
-            let rc = if let Some(rc) = cache::touch(key) {
-                rc
-            } else {
-                let result: #output_ty = (|| #block)();
-                cache::store_in_cache(key, result)
-            };
-
-            #op_ident(cache::MemoOperator::Memo(cache::Trace::Pop));
-
-            (*rc).clone()
-        }
-
-        #vis #op_sig
-        {
-            static mut dependents: Vec<cache::OperatorFunc> = Vec::new();
-            match op {
-                cache::MemoOperator::Memo(cache::Trace::Push) => {
-                    if let Some(last) = cache::call_stack::last() {
-                        unsafe { dependents.push(last.clone()) };
-                    }
-                    cache::call_stack::push(#op_ident);
-                },
-                cache::MemoOperator::Memo(cache::Trace::Pop) => {
-                    cache::call_stack::pop();
-                },
-                cache::MemoOperator::Pop => {
-                    for dependent in unsafe { dependents.iter() } {
-                        cache::remove_from_cache(*dependent);
-                        dependent(cache::MemoOperator::Pop);
-                    }
-                },
-            }
+            #[allow(static_mut_refs)]
+            unsafe { &mut #memo_ident }.get_or_insert_with(|| cache::Memo::new(|| #block)).get()
         }
     };
 

@@ -1,3 +1,4 @@
+use cache::Observable as _;
 use macros::memo;
 
 static mut SOURCE_A_CALLED: bool = false;
@@ -70,8 +71,10 @@ fn complex_dependency_memo_test() {
     assert_eq!(d2, d1);
     assert_eq!(e2, e1);
 
-    cache::remove_from_cache(source_a_op);
-    source_a_op(cache::MemoOperator::Pop);
+    #[allow(static_mut_refs)]
+    if let Some(memo) = unsafe { &SOURCE_A } {
+        memo.invalidate();
+    }
 
     unsafe { SOURCE_A_CALLED = false };
     unsafe { SOURCE_C_CALLED = false };
