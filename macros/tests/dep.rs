@@ -55,6 +55,12 @@ pub fn derived_e() -> i32 {
 
 #[test]
 fn complex_dependency_memo_test() {
+    assert!(!unsafe { SOURCE_A_CALLED });
+    assert!(!unsafe { SOURCE_B_CALLED });
+    assert!(!unsafe { SOURCE_C_CALLED });
+    assert!(!unsafe { SOURCE_D_CALLED });
+    assert!(!unsafe { SOURCE_E_CALLED });
+
     let e1 = derived_e();
     let d1 = derived_d();
     let c1 = derived_c();
@@ -62,6 +68,12 @@ fn complex_dependency_memo_test() {
     assert_eq!(c1, 15); // 10 + 5
     assert_eq!(d1, 30); // 15 * 2
     assert_eq!(e1, 2); // 5 - 3
+
+    assert!(unsafe { SOURCE_A_CALLED });
+    assert!(unsafe { SOURCE_B_CALLED });
+    assert!(unsafe { SOURCE_C_CALLED });
+    assert!(unsafe { SOURCE_D_CALLED });
+    assert!(unsafe { SOURCE_E_CALLED });
 
     let e2 = derived_e();
     let d2 = derived_d();
@@ -71,11 +83,19 @@ fn complex_dependency_memo_test() {
     assert_eq!(d2, d1);
     assert_eq!(e2, e1);
 
+    assert!(unsafe { SOURCE_A_CALLED });
+    assert!(unsafe { SOURCE_B_CALLED });
+    assert!(unsafe { SOURCE_C_CALLED });
+    assert!(unsafe { SOURCE_D_CALLED });
+    assert!(unsafe { SOURCE_E_CALLED });
+
     unsafe { (*SOURCE_A).invalidate() };
 
     unsafe { SOURCE_A_CALLED = false };
+    unsafe { SOURCE_B_CALLED = false };
     unsafe { SOURCE_C_CALLED = false };
     unsafe { SOURCE_D_CALLED = false };
+    unsafe { SOURCE_E_CALLED = false };
 
     let e3 = derived_e();
     let d3 = derived_d();
@@ -84,4 +104,10 @@ fn complex_dependency_memo_test() {
     assert_eq!(c3, 15);
     assert_eq!(d3, 30);
     assert_eq!(e3, e2);
+
+    assert!(unsafe { SOURCE_A_CALLED });
+    assert!(!unsafe { SOURCE_B_CALLED });
+    assert!(unsafe { SOURCE_C_CALLED });
+    assert!(unsafe { SOURCE_D_CALLED });
+    assert!(!unsafe { SOURCE_E_CALLED });
 }

@@ -29,15 +29,15 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .into();
     }
 
-    let memo_ident = format_ident!("{}", ident.to_string().to_uppercase());
+    let ident = format_ident!("{}", ident.to_string().to_uppercase());
 
     let expanded = quote! {
-        static mut #memo_ident: once_cell::unsync::Lazy<cache::Memo<#output_ty, fn() -> #output_ty>> = once_cell::unsync::Lazy::new(|| cache::Memo::new(|| #block));
+        static mut #ident: once_cell::unsync::Lazy<cache::Memo<#output_ty, fn() -> #output_ty>> = once_cell::unsync::Lazy::new(|| cache::Memo::new(|| #block));
 
         #vis #sig
         where #output_ty: Clone + 'static
         {
-            unsafe { (*#memo_ident).get() }
+            unsafe { (*#ident).get() }
         }
     };
 
