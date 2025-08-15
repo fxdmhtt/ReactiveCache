@@ -1,44 +1,34 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Ident, ItemFn, ReturnType, parse_macro_input};
+use syn::{Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
 
-#[proc_macro_attribute]
-pub fn signal(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let func = parse_macro_input!(item as ItemFn);
+#[proc_macro]
+pub fn signal(input: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(input as ItemStatic);
 
-    let vis = &func.vis;
-    let sig = &func.sig;
-    let block = &func.block;
-    let ident = &func.sig.ident;
+    let attrs = &item.attrs;
+    let vis = &item.vis;
+    let static_token = &item.static_token;
+    let mutability = &item.mutability;
+    let ident = &item.ident;
+    let colon_token = &item.colon_token;
+    let ty = &item.ty;
+    let eq_token = &item.eq_token;
+    let expr = &item.expr;
+    let semi_token = &item.semi_token;
 
-    let output_ty = match &sig.output {
-        ReturnType::Type(_, ty) => ty.clone(),
-        _ => {
-            return syn::Error::new_spanned(&sig.output, "Functions must have a return value")
-                .to_compile_error()
-                .into();
-        }
+    let mutability = match mutability {
+        syn::StaticMutability::Mut(_) => quote! { mut },
+        syn::StaticMutability::None => quote! {},
+        _ => panic!(),
     };
 
-    if !sig.inputs.is_empty() {
-        return syn::Error::new_spanned(
-            &sig.inputs,
-            "The memo macro can only be used with `get` function without any parameters.",
-        )
-        .to_compile_error()
-        .into();
-    }
-
-    let ident = format_ident!("{}", ident.to_string().to_uppercase());
+    let ty = quote! { once_cell::unsync::Lazy<std::rc::Rc<cache::Signal<#ty>>> };
+    let expr = quote! { once_cell::unsync::Lazy::new(|| cache::Signal::new(Some(#expr))) };
 
     let expanded = quote! {
-        static mut #ident: once_cell::unsync::Lazy<cache::Signal<#output_ty, fn() -> #output_ty>> = once_cell::unsync::Lazy::new(|| cache::Signal::new(|| #block));
-
-        #vis #sig
-        where #output_ty: Clone + 'static
-        {
-            unsafe { (*#ident).get() }
-        }
+        #(#attrs)*
+        #vis #static_token #mutability #ident #colon_token #ty #eq_token #expr #semi_token
     };
 
     expanded.into()
@@ -72,9 +62,11 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 
     let ident = format_ident!("{}", ident.to_string().to_uppercase());
+    let ty = quote! { once_cell::unsync::Lazy<cache::Memo<#output_ty, fn() -> #output_ty>> };
+    let expr = quote! { once_cell::unsync::Lazy::new(|| cache::Memo::new(|| #block)) };
 
     let expanded = quote! {
-        static mut #ident: once_cell::unsync::Lazy<cache::Memo<#output_ty, fn() -> #output_ty>> = once_cell::unsync::Lazy::new(|| cache::Memo::new(|| #block));
+        static mut #ident: #ty = #expr;
 
         #vis #sig
         where #output_ty: Clone + 'static

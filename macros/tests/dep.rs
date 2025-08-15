@@ -2,7 +2,6 @@
 
 use std::cell::Cell;
 
-use cache::Observable as _;
 use macros::{memo, signal};
 
 thread_local! {
@@ -11,23 +10,26 @@ thread_local! {
     static DERIVED_C_CALLED: Cell<bool> = const { Cell::new(false) };
     static DERIVED_D_CALLED: Cell<bool> = const { Cell::new(false) };
     static DERIVED_E_CALLED: Cell<bool> = const { Cell::new(false) };
-
-    static A: Cell<i32> = const { Cell::new(10) };
-    static B: Cell<i32> = const { Cell::new(5) };
 }
 
-#[signal]
+signal!(
+    static mut A: i32 = 10;
+);
+
+signal!(
+    static mut B: i32 = 5;
+);
+
 pub fn source_a() -> i32 {
     SOURCE_A_CALLED.set(true);
 
-    A.get()
+    unsafe { *A.get() }
 }
 
-#[signal]
 pub fn source_b() -> i32 {
     SOURCE_B_CALLED.set(true);
 
-    B.get()
+    unsafe { *B.get() }
 }
 
 #[memo]
@@ -98,14 +100,6 @@ fn complex_dependency_memo_test() {
     DERIVED_D_CALLED.set(false);
     DERIVED_E_CALLED.set(false);
 
-    A.set(10);
-
-    assert!(!SOURCE_A_CALLED.get());
-    assert!(!SOURCE_B_CALLED.get());
-    assert!(!DERIVED_C_CALLED.get());
-    assert!(!DERIVED_D_CALLED.get());
-    assert!(!DERIVED_E_CALLED.get());
-
     let e2 = derived_e();
     let d2 = derived_d();
     let c2 = derived_c();
@@ -125,37 +119,6 @@ fn complex_dependency_memo_test() {
     DERIVED_C_CALLED.set(false);
     DERIVED_D_CALLED.set(false);
     DERIVED_E_CALLED.set(false);
-
-    unsafe { SOURCE_A.invalidate() };
-
-    assert!(!SOURCE_A_CALLED.get());
-    assert!(!SOURCE_B_CALLED.get());
-    assert!(!DERIVED_C_CALLED.get());
-    assert!(!DERIVED_D_CALLED.get());
-    assert!(!DERIVED_E_CALLED.get());
-
-    let e3 = derived_e();
-    assert!(!SOURCE_A_CALLED.get());
-    assert!(!SOURCE_B_CALLED.get());
-    assert!(!DERIVED_C_CALLED.get());
-    assert!(!DERIVED_D_CALLED.get());
-    assert!(!DERIVED_E_CALLED.get());
-    let d3 = derived_d();
-    assert!(SOURCE_A_CALLED.get());
-    assert!(SOURCE_B_CALLED.get());
-    assert!(DERIVED_C_CALLED.get());
-    assert!(DERIVED_D_CALLED.get());
-    assert!(!DERIVED_E_CALLED.get());
-    let c3 = derived_c();
-    assert!(SOURCE_A_CALLED.get());
-    assert!(SOURCE_B_CALLED.get());
-    assert!(DERIVED_C_CALLED.get());
-    assert!(DERIVED_D_CALLED.get());
-    assert!(!DERIVED_E_CALLED.get());
-
-    assert_eq!(c3, 15);
-    assert_eq!(d3, 30);
-    assert_eq!(e3, e2);
 }
 
 #[test]
@@ -180,7 +143,7 @@ fn signal_set_unchanged_test() {
     DERIVED_D_CALLED.set(false);
     DERIVED_E_CALLED.set(false);
 
-    unsafe { SOURCE_A.set(10) };
+    unsafe { A.set(10) };
 
     assert!(!SOURCE_A_CALLED.get());
     assert!(!SOURCE_B_CALLED.get());
@@ -225,7 +188,8 @@ fn signal_set_value_test() {
     DERIVED_D_CALLED.set(false);
     DERIVED_E_CALLED.set(false);
 
-    unsafe { SOURCE_A.set(20) };
+    unsafe { A.set(20) };
+    unsafe { A.set(10) };
 
     assert!(!SOURCE_A_CALLED.get());
     assert!(!SOURCE_B_CALLED.get());

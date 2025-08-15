@@ -1,81 +1,80 @@
-use std::rc::Rc;
+use std::{
+    cell::{Ref, RefCell},
+    rc::Rc,
+};
+
+use mvvm::System::ComponentModel::ObservableProperty;
 
 use crate::{Effect, Observable, call_stack};
 
-pub struct Signal<T, F>
+pub struct Signal<T>
 where
-    T: Eq + Clone,
-    F: Fn() -> T,
+    T: Eq + Default + 'static,
 {
-    value: T,
-    f: F,
-    dependents: Vec<&'static dyn Observable>,
-    effects: Vec<Rc<Effect>>,
+    prop: ObservableProperty<'static, T>,
+    dependents: RefCell<Vec<&'static dyn Observable>>,
+    effects: RefCell<Vec<Rc<Effect>>>,
 }
 
-impl<T, F> Observable for Signal<T, F>
+impl<T> Signal<T>
 where
-    T: Eq + Clone,
-    F: Fn() -> T,
+    T: Eq + Default + 'static,
 {
-    fn invalidate(&'static self) {
+    fn invalidate(&self) {
         self.dependents
+            .borrow()
             .iter()
             .for_each(|dependent| dependent.invalidate());
     }
-}
 
-impl<T, F> Signal<T, F>
-where
-    T: Eq + Clone,
-    F: Fn() -> T,
-{
-    pub fn new(f: F) -> Self {
-        let value = f();
-        Signal {
-            value,
-            f,
-            dependents: vec![],
-            effects: vec![],
-        }
+    fn flush_effects(&self) {
+        self.effects.borrow().iter().for_each(|effect| effect.run());
     }
 
-    fn effects_invoke(&self) {
-        self.effects.iter().for_each(|effect| effect.run());
+    pub fn new(value: Option<T>) -> Rc<Self> {
+        let s = Rc::new(Signal {
+            prop: value.map_or_else(Default::default, ObservableProperty::new),
+            dependents: vec![].into(),
+            effects: vec![].into(),
+        });
+
+        let weak = Rc::downgrade(&s);
+        s.prop.PropertyChanging.borrow_mut().add(move |_| {
+            if let Some(s) = weak.upgrade() {
+                s.invalidate();
+            }
+        });
+
+        let weak = Rc::downgrade(&s);
+        s.prop.PropertyChanged.borrow_mut().add(move |_| {
+            if let Some(s) = weak.upgrade() {
+                s.flush_effects();
+            }
+        });
+
+        s
     }
 
-    pub fn get(&'static mut self) -> T {
+    pub fn get(&self) -> Ref<'_, T> {
         if let Some(last) = call_stack::last()
-            && !self.dependents.iter().any(|d| std::ptr::eq(*d, *last))
+            && !self
+                .dependents
+                .borrow()
+                .iter()
+                .any(|d| std::ptr::eq(*d, *last))
         {
-            self.dependents.push(*last);
+            self.dependents.borrow_mut().push(*last);
         }
         if let Some(effect) = call_stack::current_effect_peak()
-            && !self.effects.iter().any(|e| Rc::ptr_eq(e, &effect))
+            && !self.effects.borrow().iter().any(|e| Rc::ptr_eq(e, &effect))
         {
-            self.effects.push(effect);
+            self.effects.borrow_mut().push(effect);
         }
 
-        let result: T = (self.f)();
-        self.set(result.clone());
-
-        result
+        self.prop.GetValue()
     }
 
-    pub fn set(&'static mut self, value: T) -> bool {
-        if self.value == value {
-            return false;
-        }
-
-        self.value = value;
-
-        self.invalidate();
-        self.effects_invoke();
-
-        true
-    }
-
-    pub fn update(&'static mut self) -> bool {
-        self.set((self.f)())
+    pub fn set(&self, value: T) -> bool {
+        self.prop.SetValue(value)
     }
 }

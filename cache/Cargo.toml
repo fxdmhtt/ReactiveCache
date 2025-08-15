@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 lru = "0.16.0"
+mvvm = "0.2.1"
 once_cell = "1.21.3"

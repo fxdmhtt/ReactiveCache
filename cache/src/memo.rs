@@ -40,6 +40,7 @@ where
         {
             self.dependents.push(*last);
         }
+
         call_stack::push(self);
 
         let rc = if let Some(rc) = touch(self) {
