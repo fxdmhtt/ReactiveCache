@@ -1,6 +1,6 @@
 use std::{
     cell::{Ref, RefCell},
-    rc::Rc,
+    rc::{Rc, Weak},
 };
 
 use mvvm::System::ComponentModel::ObservableProperty;
@@ -13,7 +13,7 @@ where
 {
     prop: ObservableProperty<'static, T>,
     dependents: RefCell<Vec<&'static dyn Observable>>,
-    effects: RefCell<Vec<Rc<Effect>>>,
+    effects: RefCell<Vec<Weak<Effect>>>,
 }
 
 impl<T> Signal<T>
@@ -21,14 +21,18 @@ where
     T: Eq + Default + 'static,
 {
     fn invalidate(&self) {
-        self.dependents
-            .borrow()
-            .iter()
-            .for_each(|dependent| dependent.invalidate());
+        self.dependents.borrow().iter().for_each(|d| d.invalidate());
     }
 
     fn flush_effects(&self) {
-        self.effects.borrow().iter().for_each(|effect| effect.run());
+        self.effects.borrow_mut().retain(|w| {
+            if let Some(e) = w.upgrade() {
+                e.run();
+                true
+            } else {
+                false
+            }
+        });
     }
 
     pub fn new(value: Option<T>) -> Rc<Self> {
@@ -65,10 +69,14 @@ where
         {
             self.dependents.borrow_mut().push(*last);
         }
-        if let Some(effect) = call_stack::current_effect_peak()
-            && !self.effects.borrow().iter().any(|e| Rc::ptr_eq(e, &effect))
+        if let Some(e) = call_stack::current_effect_peak()
+            && !self
+                .effects
+                .borrow()
+                .iter()
+                .any(|w| w.as_ptr() == Rc::as_ptr(&e))
         {
-            self.effects.borrow_mut().push(effect);
+            self.effects.borrow_mut().push(Rc::downgrade(&e));
         }
 
         self.prop.GetValue()

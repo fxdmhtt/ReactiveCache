@@ -1,5 +1,7 @@
 #![allow(static_mut_refs)]
 
+use std::rc::Rc;
+
 use macros::{effect, memo, signal};
 
 static mut SOURCE_A_CALLED: i32 = 0;
@@ -65,6 +67,26 @@ pub fn effect_f() {
 fn simple_effect_test() {
     A_set(0);
     effect!(effect_e);
+    effect!(|| { effect_f() });
+
+    unsafe { SOURCE_A_CALLED = 0 };
+    unsafe { SOURCE_B_CALLED = 0 };
+    unsafe { DERIVED_C_CALLED = 0 };
+    unsafe { DERIVED_D_CALLED = 0 };
+    unsafe { EFFECT_E_CALLED = 0 };
+    unsafe { EFFECT_F_CALLED = 0 };
+
+    A_set(10);
+
+    assert_eq!(unsafe { SOURCE_A_CALLED }, 0);
+    assert_eq!(unsafe { SOURCE_B_CALLED }, 0);
+    assert_eq!(unsafe { DERIVED_C_CALLED }, 0);
+    assert_eq!(unsafe { DERIVED_D_CALLED }, 0);
+    assert_eq!(unsafe { EFFECT_E_CALLED }, 0);
+    assert_eq!(unsafe { EFFECT_F_CALLED }, 0);
+
+    A_set(0);
+    let _ = Rc::into_raw(effect!(effect_e));
 
     unsafe { SOURCE_A_CALLED = 0 };
     unsafe { SOURCE_B_CALLED = 0 };
@@ -83,7 +105,7 @@ fn simple_effect_test() {
     assert_eq!(unsafe { EFFECT_F_CALLED }, 0);
 
     A_set(0);
-    effect!(|| { effect_f() });
+    let _ = Rc::into_raw(effect!(|| { effect_f() }));
 
     unsafe { SOURCE_A_CALLED = 0 };
     unsafe { SOURCE_B_CALLED = 0 };

@@ -16,9 +16,7 @@ where
 {
     fn invalidate(&'static self) {
         remove_from_cache(self);
-        self.dependents
-            .iter()
-            .for_each(|dependent| dependent.invalidate());
+        self.dependents.iter().for_each(|d| d.invalidate());
     }
 }
 
