@@ -1,4 +1,6 @@
-use crate::{Observable, call_stack};
+use std::rc::Rc;
+
+use crate::{Effect, Observable, call_stack};
 
 pub struct Signal<T, F>
 where
@@ -8,6 +10,7 @@ where
     value: T,
     f: F,
     dependents: Vec<&'static dyn Observable>,
+    effects: Vec<Rc<Effect>>,
 }
 
 impl<T, F> Observable for Signal<T, F>
@@ -33,7 +36,12 @@ where
             value,
             f,
             dependents: vec![],
+            effects: vec![],
         }
+    }
+
+    fn effects_invoke(&self) {
+        self.effects.iter().for_each(|effect| effect.run());
     }
 
     pub fn get(&'static mut self) -> T {
@@ -41,6 +49,11 @@ where
             && !self.dependents.iter().any(|d| std::ptr::eq(*d, *last))
         {
             self.dependents.push(*last);
+        }
+        if let Some(effect) = call_stack::current_effect_peak()
+            && !self.effects.iter().any(|e| Rc::ptr_eq(e, &effect))
+        {
+            self.effects.push(effect);
         }
 
         let result: T = (self.f)();
@@ -57,6 +70,7 @@ where
         self.value = value;
 
         self.invalidate();
+        self.effects_invoke();
 
         true
     }

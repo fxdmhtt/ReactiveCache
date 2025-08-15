@@ -30,6 +30,8 @@ The next time you access a cached value, it will be recomputed lazily and stored
 
 ReactiveCache is structured around a clear three-tier reactive model:
 
+Signal(s) → Memo(s) → Effect
+
 Signal (atomic mutable)
 |
 +--> Memo (derived computation, cached value, lazy)

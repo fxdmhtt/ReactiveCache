@@ -8,12 +8,16 @@ pub enum MemoOperator {
     Pop,
 }
 
-pub mod cache;
-pub mod call_stack;
+mod cache;
+mod call_stack;
+
+pub mod effect;
 pub mod memo;
 pub mod signal;
 
 pub use cache::{remove_from_cache, store_in_cache, touch};
+pub use call_stack::{current_effect_peak, current_effect_pop, current_effect_push};
+pub use effect::Effect;
 pub use memo::Memo;
 pub use signal::Signal;
 

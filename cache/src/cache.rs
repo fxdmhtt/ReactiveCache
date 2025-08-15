@@ -14,6 +14,14 @@ static mut CACHE: Lazy<LruCache<CacheKey, Rc<dyn Any>>> =
     Lazy::new(|| LruCache::new(NonZeroUsize::new(CACHE_CAP).unwrap()));
 
 pub fn touch<T: 'static>(key: &'static dyn Observable) -> Option<Rc<T>> {
+    // When the Effect performs dependency calculations for the first time,
+    // it must ignore the relevant cache,
+    // otherwise the underlying Signal will not remember the Effect.
+    if crate::current_effect_peak().is_some() {
+        remove_from_cache(key);
+        return None;
+    }
+
     unsafe { CACHE.get(&(key as _)) }
         .map(Rc::clone)
         .filter(|rc| rc.is::<T>())
