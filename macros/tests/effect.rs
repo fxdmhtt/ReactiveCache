@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use macros::{effect, memo, signal};
+use reactive_macros::{effect, memo, signal};
 
 static mut SOURCE_A_CALLED: i32 = 0;
 static mut SOURCE_B_CALLED: i32 = 0;

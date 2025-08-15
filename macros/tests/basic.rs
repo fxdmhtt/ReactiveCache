@@ -1,4 +1,4 @@
-use macros::memo;
+use reactive_macros::memo;
 
 #[memo]
 pub fn get_number() -> i32 {

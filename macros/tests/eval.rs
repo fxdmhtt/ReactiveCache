@@ -1,4 +1,4 @@
-use macros::evaluate;
+use reactive_macros::evaluate;
 
 static mut PRINT_INVOKED: i32 = 0;
 

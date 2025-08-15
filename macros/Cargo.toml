@@ -1,7 +1,12 @@
 [package]
-name = "macros"
+name = "reactive_macros"
 version = "0.1.0"
 edition = "2024"
+description = "A lightweight, dependency-aware memoization library with automatic invalidation and lazy recomputation."
+repository = "https://github.com/fxdmhtt/ReactiveCache"
+license = "GPL-2.0"
+keywords = ["cache", "reactive"]
+categories = ["caching"]
 
 [lib]
 proc-macro = true
@@ -12,4 +17,4 @@ proc-macro2 = "1.0.95"
 quote = "1.0.40"
 syn = { version = "2.0.104", features = ["full"] }
 
-cache = { path = "../cache" }
+reactive_cache = { path = "../cache" }

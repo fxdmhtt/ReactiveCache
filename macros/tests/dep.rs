@@ -2,7 +2,7 @@
 
 use std::cell::Cell;
 
-use macros::{memo, signal};
+use reactive_macros::{memo, signal};
 
 thread_local! {
     static SOURCE_A_CALLED: Cell<bool> = const { Cell::new(false) };
