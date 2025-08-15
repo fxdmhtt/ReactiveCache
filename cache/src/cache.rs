@@ -13,7 +13,7 @@ const CACHE_CAP: usize = 128;
 static mut CACHE: Lazy<LruCache<CacheKey, Rc<dyn Any>>> =
     Lazy::new(|| LruCache::new(NonZeroUsize::new(CACHE_CAP).unwrap()));
 
-pub fn touch<T: 'static>(key: &'static dyn Observable) -> Option<Rc<T>> {
+pub(crate) fn touch<T: 'static>(key: &'static dyn Observable) -> Option<Rc<T>> {
     // When the Effect performs dependency calculations for the first time,
     // it must ignore the relevant cache,
     // otherwise the underlying Signal will not remember the Effect.
@@ -28,12 +28,12 @@ pub fn touch<T: 'static>(key: &'static dyn Observable) -> Option<Rc<T>> {
         .map(|rc| unsafe { Rc::from_raw(Rc::into_raw(rc) as *const T) })
 }
 
-pub fn store_in_cache<T: 'static>(key: &'static dyn Observable, val: T) -> Rc<T> {
+pub(crate) fn store_in_cache<T: 'static>(key: &'static dyn Observable, val: T) -> Rc<T> {
     let rc = Rc::new(val);
     unsafe { CACHE.put(key, Rc::clone(&rc) as _) };
     rc
 }
 
-pub fn remove_from_cache(key: &'static dyn Observable) {
+pub(crate) fn remove_from_cache(key: &'static dyn Observable) {
     unsafe { CACHE.pop(&(key as _)) };
 }

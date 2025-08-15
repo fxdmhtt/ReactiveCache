@@ -15,7 +15,7 @@ impl Effect {
         crate::current_effect_pop()
     }
 
-    pub fn run(&self) {
+    pub(crate) fn run(&self) {
         (self.f)()
     }
 }
