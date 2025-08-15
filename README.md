@@ -1,9 +1,9 @@
 # ReactiveCache
 **Cache smart, update only when it matters.**
 
-[![Crates.io](https://img.shields.io/crates/v/reactivecache.svg)](https://crates.io/crates/reactivecache)
-[![Docs.rs](https://docs.rs/reactivecache/badge.svg)](https://docs.rs/reactivecache)
-[![License](https://img.shields.io/crates/l/reactivecache.svg)](LICENSE)
+[![Crates.io](https://img.shields.io/crates/v/reactive_cache.svg)](https://crates.io/crates/reactive_cache)
+[![Docs.rs](https://docs.rs/reactive_cache/badge.svg)](https://docs.rs/reactive_cache)
+[![License](https://img.shields.io/crates/l/reactive_cache.svg)](LICENSE)
 
 A lightweight, dependency-aware memoization library with automatic invalidation and lazy recomputation.
 
