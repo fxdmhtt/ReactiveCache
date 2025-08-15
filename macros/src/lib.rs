@@ -23,12 +23,30 @@ pub fn signal(input: TokenStream) -> TokenStream {
         _ => panic!(),
     };
 
-    let ty = quote! { once_cell::unsync::Lazy<std::rc::Rc<cache::Signal<#ty>>> };
+    let ident_fn = format_ident!("{}", ident.to_string().to_lowercase());
+    let ident_get = format_ident!("{}_get", ident);
+    let ident_set = format_ident!("{}_set", ident);
+
+    let lazy_ty = quote! { once_cell::unsync::Lazy<std::rc::Rc<cache::Signal<#ty>>> };
     let expr = quote! { once_cell::unsync::Lazy::new(|| cache::Signal::new(Some(#expr))) };
 
     let expanded = quote! {
         #(#attrs)*
-        #vis #static_token #mutability #ident #colon_token #ty #eq_token #expr #semi_token
+        #vis #static_token #mutability #ident #colon_token #lazy_ty #eq_token #expr #semi_token
+
+        #[allow(non_snake_case)]
+        pub fn #ident_get() -> #ty {
+            unsafe { *#ident.get() }
+        }
+
+        #[allow(non_snake_case)]
+        pub fn #ident_set(value: #ty) -> bool {
+            unsafe { #ident.set(value) }
+        }
+
+        pub fn #ident_fn() -> #ty {
+            #ident_get()
+        }
     };
 
     expanded.into()

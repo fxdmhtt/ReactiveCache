@@ -23,13 +23,13 @@ signal!(
 pub fn source_a() -> i32 {
     SOURCE_A_CALLED.set(true);
 
-    unsafe { *A.get() }
+    A_get()
 }
 
 pub fn source_b() -> i32 {
     SOURCE_B_CALLED.set(true);
 
-    unsafe { *B.get() }
+    b()
 }
 
 #[memo]
@@ -40,16 +40,12 @@ pub fn derived_c() -> i32 {
     source_a() + source_b()
 }
 
-pub fn derived__() -> i32 {
-    derived_c()
-}
-
 #[memo]
 pub fn derived_d() -> i32 {
     assert!(!DERIVED_D_CALLED.get());
     DERIVED_D_CALLED.set(true);
 
-    derived__() * 2
+    derived_c() * 2
 }
 
 #[memo]
@@ -63,8 +59,6 @@ pub fn derived_e() -> i32 {
 // source_a   source_b
 //    \         /  \
 //     derived_c    derived_e
-//         |
-//     derived__
 //         |
 //     derived_d
 
@@ -143,7 +137,7 @@ fn signal_set_unchanged_test() {
     DERIVED_D_CALLED.set(false);
     DERIVED_E_CALLED.set(false);
 
-    unsafe { A.set(10) };
+    A_set(10);
 
     assert!(!SOURCE_A_CALLED.get());
     assert!(!SOURCE_B_CALLED.get());
@@ -188,8 +182,8 @@ fn signal_set_value_test() {
     DERIVED_D_CALLED.set(false);
     DERIVED_E_CALLED.set(false);
 
-    unsafe { A.set(20) };
-    unsafe { A.set(10) };
+    A_set(20);
+    A_set(10);
 
     assert!(!SOURCE_A_CALLED.get());
     assert!(!SOURCE_B_CALLED.get());
