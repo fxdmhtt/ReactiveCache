@@ -35,7 +35,9 @@ where
     }
 
     pub fn get(&'static mut self) -> T {
-        if let Some(last) = call_stack::last() {
+        if let Some(last) = call_stack::last()
+            && !self.dependents.iter().any(|d| std::ptr::eq(*d, *last))
+        {
             self.dependents.push(*last);
         }
         call_stack::push(self);
