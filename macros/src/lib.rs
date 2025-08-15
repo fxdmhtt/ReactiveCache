@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Expr, ItemFn, ItemStatic, ReturnType, parse_macro_input};
+use syn::{Expr, Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
 
 #[proc_macro]
 pub fn signal(input: TokenStream) -> TokenStream {
@@ -122,6 +122,56 @@ pub fn effect(input: TokenStream) -> TokenStream {
             return syn::Error::new_spanned(&expr, "Expected a variable name or a closure")
                 .to_compile_error()
                 .into();
+        }
+    };
+
+    expanded.into()
+}
+
+#[proc_macro_attribute]
+pub fn evaluate(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let print = parse_macro_input!(attr as Ident);
+    let func = parse_macro_input!(item as ItemFn);
+
+    let vis = &func.vis;
+    let sig = &func.sig;
+    let block = &func.block;
+    let ident = &func.sig.ident;
+
+    let output_ty = match &sig.output {
+        ReturnType::Type(_, ty) => ty.clone(),
+        _ => {
+            return syn::Error::new_spanned(&sig.output, "Functions must have a return value")
+                .to_compile_error()
+                .into();
+        }
+    };
+
+    if !sig.inputs.is_empty() {
+        return syn::Error::new_spanned(
+            &sig.inputs,
+            "The memo macro can only be used with `get` function without any parameters.",
+        )
+        .to_compile_error()
+        .into();
+    }
+
+    let option_ty = quote! { Option<#output_ty> };
+    let ident = ident.to_string();
+
+    let expanded = quote! {
+        #vis #sig
+        where #output_ty: Eq + Clone + 'static
+        {
+            let new: #output_ty = (|| #block)();
+
+            static mut VALUE: #option_ty = None;
+            if let Some(old) = unsafe { VALUE } && old == new {
+                #print(format!("Evaluate: {} not changed, still {:?}\n", #ident, new));
+            }
+            unsafe { VALUE = Some(new.clone()) };
+
+            new
         }
     };
 
