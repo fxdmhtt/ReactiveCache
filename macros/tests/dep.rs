@@ -29,7 +29,7 @@ pub fn source_a() -> i32 {
 pub fn source_b() -> i32 {
     SOURCE_B_CALLED.set(true);
 
-    b()
+    B()
 }
 
 #[memo]

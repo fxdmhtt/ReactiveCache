@@ -1,108 +1,103 @@
-// #![allow(static_mut_refs)]
+#![allow(static_mut_refs)]
 
-// use cache::Effect;
-// use macros::{effect, effect_init, memo, signal};
+use macros::{effect, memo, signal};
 
-// static mut SOURCE_A_CALLED: i32 = 0;
-// static mut SOURCE_B_CALLED: i32 = 0;
-// static mut DERIVED_C_CALLED: i32 = 0;
-// static mut DERIVED_D_CALLED: i32 = 0;
-// static mut EFFECT_E_CALLED: i32 = 0;
-// static mut EFFECT_F_CALLED: i32 = 0;
+static mut SOURCE_A_CALLED: i32 = 0;
+static mut SOURCE_B_CALLED: i32 = 0;
+static mut DERIVED_C_CALLED: i32 = 0;
+static mut DERIVED_D_CALLED: i32 = 0;
+static mut EFFECT_E_CALLED: i32 = 0;
+static mut EFFECT_F_CALLED: i32 = 0;
 
-// static mut A: i32 = 10;
-// static mut B: i32 = 5;
+signal!(
+    static mut A: i32 = 10;
+);
 
-// #[signal]
-// pub fn source_a() -> i32 {
-//     unsafe { SOURCE_A_CALLED += 1 };
+signal!(
+    static mut B: i32 = 5;
+);
 
-//     unsafe { A }
-// }
+pub fn source_a() -> i32 {
+    unsafe { SOURCE_A_CALLED += 1 };
 
-// #[signal]
-// pub fn source_b() -> i32 {
-//     unsafe { SOURCE_B_CALLED += 1 };
+    A_get()
+}
 
-//     unsafe { B }
-// }
+pub fn source_b() -> i32 {
+    unsafe { SOURCE_B_CALLED += 1 };
 
-// #[memo]
-// pub fn derived_c() -> i32 {
-//     unsafe { DERIVED_C_CALLED += 1 };
+    B()
+}
 
-//     source_a() + source_b()
-// }
+#[memo]
+pub fn derived_c() -> i32 {
+    unsafe { DERIVED_C_CALLED += 1 };
 
-// #[memo]
-// pub fn derived_d() -> i32 {
-//     unsafe { DERIVED_D_CALLED += 1 };
+    source_a() + source_b()
+}
 
-//     derived_c() * 2
-// }
+#[memo]
+pub fn derived_d() -> i32 {
+    unsafe { DERIVED_D_CALLED += 1 };
 
-// #[effect]
-// pub fn effect_e() {
-//     unsafe { EFFECT_E_CALLED += 1 };
+    derived_c() * 2
+}
 
-//     derived_c();
-// }
+pub fn effect_e() {
+    unsafe { EFFECT_E_CALLED += 1 };
 
-// // #[effect]
-// pub fn effect_f() {
-//     unsafe { EFFECT_F_CALLED += 1 };
+    derived_c();
+}
 
-//     derived_d();
-// }
+pub fn effect_f() {
+    unsafe { EFFECT_F_CALLED += 1 };
 
-// // source_a   source_b
-// //    \         /
-// //     derived_c - effect_e
-// //         |
-// //     derived_d - effect_f
+    derived_d();
+}
 
-// #[test]
-// fn simple_effect_test() {
-//     unsafe { A = 0 };
-//     unsafe { SOURCE_A.update() };
-//     unsafe { effect_init!(effect_e) };
+// source_a   source_b
+//    \         /
+//     derived_c - effect_e
+//         |
+//     derived_d - effect_f
 
-//     unsafe { SOURCE_A_CALLED = 0 };
-//     unsafe { SOURCE_B_CALLED = 0 };
-//     unsafe { DERIVED_C_CALLED = 0 };
-//     unsafe { DERIVED_D_CALLED = 0 };
-//     unsafe { EFFECT_E_CALLED = 0 };
-//     unsafe { EFFECT_F_CALLED = 0 };
+#[test]
+fn simple_effect_test() {
+    A_set(0);
+    effect!(effect_e);
 
-//     unsafe { A = 10 };
-//     unsafe { SOURCE_A.update() };
+    unsafe { SOURCE_A_CALLED = 0 };
+    unsafe { SOURCE_B_CALLED = 0 };
+    unsafe { DERIVED_C_CALLED = 0 };
+    unsafe { DERIVED_D_CALLED = 0 };
+    unsafe { EFFECT_E_CALLED = 0 };
+    unsafe { EFFECT_F_CALLED = 0 };
 
-//     assert_eq!(unsafe { SOURCE_A_CALLED }, 2);
-//     assert_eq!(unsafe { SOURCE_B_CALLED }, 1);
-//     assert_eq!(unsafe { DERIVED_C_CALLED }, 1);
-//     assert_eq!(unsafe { DERIVED_D_CALLED }, 0);
-//     assert_eq!(unsafe { EFFECT_E_CALLED }, 1);
-//     assert_eq!(unsafe { EFFECT_F_CALLED }, 0);
+    A_set(10);
 
-//     unsafe { A = 0 };
-//     unsafe { SOURCE_A.update() };
-//     // unsafe { effect_init!(effect_f) };
-//     Effect::new(effect_f);
+    assert_eq!(unsafe { SOURCE_A_CALLED }, 1);
+    assert_eq!(unsafe { SOURCE_B_CALLED }, 1);
+    assert_eq!(unsafe { DERIVED_C_CALLED }, 1);
+    assert_eq!(unsafe { DERIVED_D_CALLED }, 0);
+    assert_eq!(unsafe { EFFECT_E_CALLED }, 1);
+    assert_eq!(unsafe { EFFECT_F_CALLED }, 0);
 
-//     unsafe { SOURCE_A_CALLED = 0 };
-//     unsafe { SOURCE_B_CALLED = 0 };
-//     unsafe { DERIVED_C_CALLED = 0 };
-//     unsafe { DERIVED_D_CALLED = 0 };
-//     unsafe { EFFECT_E_CALLED = 0 };
-//     unsafe { EFFECT_F_CALLED = 0 };
+    A_set(0);
+    effect!(|| { effect_f() });
 
-//     unsafe { A = 10 };
-//     unsafe { SOURCE_A.update() };
+    unsafe { SOURCE_A_CALLED = 0 };
+    unsafe { SOURCE_B_CALLED = 0 };
+    unsafe { DERIVED_C_CALLED = 0 };
+    unsafe { DERIVED_D_CALLED = 0 };
+    unsafe { EFFECT_E_CALLED = 0 };
+    unsafe { EFFECT_F_CALLED = 0 };
 
-//     assert_eq!(unsafe { SOURCE_A_CALLED }, 2);
-//     assert_eq!(unsafe { SOURCE_B_CALLED }, 1);
-//     assert_eq!(unsafe { DERIVED_C_CALLED }, 1);
-//     assert_eq!(unsafe { DERIVED_D_CALLED }, 1);
-//     assert_eq!(unsafe { EFFECT_E_CALLED }, 1);
-//     assert_eq!(unsafe { EFFECT_F_CALLED }, 1);
-// }
+    A_set(10);
+
+    assert_eq!(unsafe { SOURCE_A_CALLED }, 1);
+    assert_eq!(unsafe { SOURCE_B_CALLED }, 1);
+    assert_eq!(unsafe { DERIVED_C_CALLED }, 1);
+    assert_eq!(unsafe { DERIVED_D_CALLED }, 1);
+    assert_eq!(unsafe { EFFECT_E_CALLED }, 1);
+    assert_eq!(unsafe { EFFECT_F_CALLED }, 1);
+}
