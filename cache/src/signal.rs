@@ -5,6 +5,21 @@ use std::{
 
 use crate::{IEffect, Observable, call_stack};
 
+/// A reactive signal that holds a value, tracks dependencies, and triggers effects.
+///
+/// `Signal<T>` behaves similarly to a traditional "Property" (getter/setter),
+/// but on top of that, it automatically tracks which reactive computations
+/// or effects access it. When its value changes, all dependent effects
+/// are automatically re-run.
+///
+/// In short:
+/// - Like a Property: provides `get()` and `set()` for accessing and updating the value.
+/// - Adds tracking: automatically records dependencies when read inside reactive contexts,
+///   and automatically triggers dependent `Effect`s when updated.
+///
+/// # Type Parameters
+///
+/// - `T`: The type of the value stored in the signal. Must implement `Eq + Default`.
 pub struct Signal<T> {
     value: RefCell<T>,
     dependents: RefCell<Vec<&'static dyn Observable>>,
@@ -12,10 +27,12 @@ pub struct Signal<T> {
 }
 
 impl<T> Signal<T> {
+    /// Invalidates all dependent observables.
     fn invalidate(&self) {
         self.dependents.borrow().iter().for_each(|d| d.invalidate());
     }
 
+    /// Runs all dependent effects.
     fn flush_effects(&self) {
         self.effects.borrow_mut().retain(|w| {
             if let Some(e) = w.upgrade() {
@@ -37,6 +54,21 @@ impl<T> Signal<T> {
         self.invalidate()
     }
 
+    /// Creates a new `Signal` with the given initial value.
+    ///
+    /// If `None` is provided, `T::default()` is used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use reactive_cache::Signal;
+    ///
+    /// let signal = Signal::new(Some(10));
+    /// assert_eq!(*signal.get(), 10);
+    ///
+    /// let default_signal: Signal<i32> = Signal::new(None);
+    /// assert_eq!(*default_signal.get(), 0);
+    /// ```
     pub fn new(value: Option<T>) -> Self
     where
         T: Default,
@@ -48,7 +80,18 @@ impl<T> Signal<T> {
         }
     }
 
+    /// Gets a reference to the current value, tracking dependencies and effects if inside a reactive context.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use reactive_cache::Signal;
+    ///
+    /// let signal = Signal::new(Some(42));
+    /// assert_eq!(*signal.get(), 42);
+    /// ```
     pub fn get(&self) -> Ref<'_, T> {
+        // Track observables in the call stack
         if let Some(last) = call_stack::last()
             && !self
                 .dependents
@@ -59,6 +102,7 @@ impl<T> Signal<T> {
             self.dependents.borrow_mut().push(*last);
         }
 
+        // Track effects in the call stack
         if let Some(e) = call_stack::creating_effect_peak()
             && !self.effects.borrow().iter().any(|w| Weak::ptr_eq(w, &e))
         {
@@ -68,6 +112,22 @@ impl<T> Signal<T> {
         self.value.borrow()
     }
 
+    /// Sets the value of the signal.
+    ///
+    /// Returns `true` if the value changed and dependent effects were triggered.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use reactive_cache::Signal;
+    ///
+    /// let signal = Signal::new(Some(5));
+    /// assert_eq!(signal.set(10), true);
+    /// assert_eq!(*signal.get(), 10);
+    ///
+    /// // Setting to the same value returns false
+    /// assert_eq!(signal.set(10), false);
+    /// ```
     pub fn set(&self, value: T) -> bool
     where
         T: Eq,

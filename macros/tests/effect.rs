@@ -64,7 +64,7 @@ pub fn effect_f() {
 //     derived_d - effect_f
 
 #[test]
-fn simple_effect_test() {
+fn complex_dependency_effect_test() {
     A_set(0);
     effect!(effect_e);
     effect!(|| { effect_f() });

@@ -2,6 +2,44 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Expr, Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
 
+/// Wraps a `static mut` variable as a reactive signal (similar to a property)
+/// with getter and setter functions.
+///
+/// The `signal!` macro transforms a `static mut` variable into a `reactive_cache::Signal`,
+/// and automatically generates:
+/// 1. A `_get()` function to read the value.
+/// 2. A `_set(value)` function to write the value (returns `true` if changed).
+/// 3. A function with the same name as the variable to simplify access (calls `_get()`).
+///
+/// # Requirements
+///
+/// - The macro currently supports only `static mut` variables.
+/// - The variable type must implement `Eq + Default`.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::cell::Cell;
+/// use reactive_macros::signal;
+///
+/// signal!(static mut A: i32 = 10;);
+///
+/// assert_eq!(A(), 10);
+/// assert_eq!(A_get(), 10);
+/// assert!(A_set(20));
+/// assert_eq!(A(), 20);
+/// assert!(!A_set(20)); // No change
+/// ```
+///
+/// # SAFETY
+///
+/// This macro wraps `static mut` variables internally, so it **is not thread-safe**.
+/// It should be used only in single-threaded contexts.
+///
+/// # Warning
+///
+/// **Do not set any signal that is part of the same effect chain.**
+/// Doing so will trigger infinite recursion or panic due to RefCell borrow conflicts.
 #[proc_macro]
 pub fn signal(input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemStatic);
@@ -58,6 +96,47 @@ pub fn signal(input: TokenStream) -> TokenStream {
     expanded.into()
 }
 
+/// Turns a zero-argument function into a memoized, reactive computation.
+///
+/// The `#[memo]` attribute macro transforms a function into a static
+/// `reactive_cache::Memo`, which:
+/// 1. Computes the value the first time the function is called.
+/// 2. Caches the result for future calls.
+/// 3. Automatically tracks reactive dependencies if used inside `Signal` or other reactive contexts.
+///
+/// # Requirements
+///
+/// - The function must have **no parameters**.
+/// - The function must return a value (`-> T`), which must implement `Clone`.
+///
+/// # Examples
+///
+/// ```rust
+/// use reactive_macros::memo;
+///
+/// #[memo]
+/// pub fn get_number() -> i32 {
+///     // The first call sets INVOKED to true
+///     static mut INVOKED: bool = false;
+///     assert!(!unsafe { INVOKED });
+///     unsafe { INVOKED = true };
+///
+///     42
+/// }
+///
+/// fn main() {
+///     // First call computes and caches the value
+///     assert_eq!(get_number(), 42);
+///     // Subsequent calls return the cached value without re-running the block
+///     assert_eq!(get_number(), 42);
+/// }
+/// ```
+///
+/// # SAFETY
+///
+/// This macro uses a `static mut` internally, so it **is not thread-safe**.
+/// It is intended for single-threaded usage only. Accessing the memo from
+/// multiple threads concurrently can cause undefined behavior.
 #[proc_macro_attribute]
 pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let func = parse_macro_input!(item as ItemFn);
@@ -103,6 +182,59 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
     expanded.into()
 }
 
+/// Creates a reactive effect from a closure or function pointer.
+///
+/// The `effect!` procedural macro is a convenient wrapper around `reactive_cache::Effect::new`.
+/// It allows you to quickly register a reactive effect that automatically tracks
+/// dependencies and re-runs when they change.
+///
+/// # Requirements
+///
+/// - The argument must be either:
+///   1. A closure (e.g., `|| { ... }`), or  
+///   2. A function pointer / function name with zero arguments.
+/// - The closure or function must return `()` (no return value required).
+///
+/// # Examples
+///
+/// ```rust
+/// use std::{cell::Cell, rc::Rc};
+/// use reactive_macros::{effect, signal};
+///
+/// signal!(static mut A: i32 = 1;);
+///
+/// // Track effect runs
+/// let counter = Rc::new(Cell::new(0));
+/// let counter_clone = counter.clone();
+///
+/// let e = effect!(move || {
+///     let _ = A();           // reading the signal
+///     counter_clone.set(counter_clone.get() + 1); // increment effect counter
+/// });
+///
+/// let ptr = Rc::into_raw(e); // actively leak to avoid implicitly dropping the effect
+///
+/// // Effect runs immediately upon creation
+/// assert_eq!(counter.get(), 1);
+///
+/// // Changing A triggers the effect again
+/// assert!(A_set(10));
+/// assert_eq!(counter.get(), 2);
+///
+/// // Setting the same value does NOT trigger the effect
+/// assert!(!A_set(10));
+/// assert_eq!(counter.get(), 2);
+/// ```
+///
+/// # SAFETY
+///
+/// The macro internally uses `reactive_cache::Effect`, which relies on
+/// `static` tracking and is **not thread-safe**. Only use in single-threaded contexts.
+///
+/// # Warning
+///
+/// **Do not set any signal that is part of the same effect chain.**
+/// Doing so will trigger infinite recursion or panic due to RefCell borrow conflicts.
 #[proc_macro]
 pub fn effect(input: TokenStream) -> TokenStream {
     let expr = parse_macro_input!(input as Expr);
@@ -129,6 +261,46 @@ pub fn effect(input: TokenStream) -> TokenStream {
     expanded.into()
 }
 
+/// Evaluates a zero-argument function and optionally reports when the value changes.
+///
+/// The `#[evaluate(print_fn)]` attribute macro transforms a function into a reactive
+/// evaluator that:
+/// 1. Computes the function result on each call.
+/// 2. Compares it with the previously computed value.
+/// 3. If the value is unchanged, calls the specified print function with a message.
+///
+/// # Requirements
+///
+/// - The function must have **no parameters**.
+/// - The function must return a value (`-> T`), which must implement `Eq + Clone`.
+/// - The print function (e.g., `print`) must be a callable accepting a `String`.
+///
+/// # Examples
+///
+/// ```rust
+/// use reactive_macros::evaluate;
+///
+/// fn print(msg: String) {
+///     println!("{}", msg);
+/// }
+///
+/// #[evaluate(print)]
+/// pub fn get_number() -> i32 {
+///     42
+/// }
+///
+/// fn main() {
+///     // First call computes the value
+///     assert_eq!(get_number(), 42);
+///     // Second call compares with previous; prints message since value didn't change
+///     assert_eq!(get_number(), 42);
+/// }
+/// ```
+///
+/// # SAFETY
+///
+/// This macro uses a `static mut` internally to store the previous value,
+/// so it **is not thread-safe**. It should only be used in single-threaded contexts.
 #[proc_macro_attribute]
 pub fn evaluate(attr: TokenStream, item: TokenStream) -> TokenStream {
     let print = parse_macro_input!(attr as Ident);
@@ -162,7 +334,7 @@ pub fn evaluate(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let expanded = quote! {
         #vis #sig
-        where #output_ty: Eq + Clone + 'static
+        where #output_ty: Eq + Clone
         {
             let new: #output_ty = (|| #block)();
 

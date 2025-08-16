@@ -2,10 +2,10 @@ use reactive_macros::evaluate;
 
 static mut PRINT_INVOKED: i32 = 0;
 
-fn print(content: String) {
+fn print(msg: String) {
     unsafe { PRINT_INVOKED += 1 };
 
-    eprint!("{content}");
+    eprint!("{msg}");
 }
 
 #[evaluate(print)]
