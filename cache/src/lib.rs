@@ -1,13 +1,3 @@
-pub enum Trace {
-    Push,
-    Pop,
-}
-
-pub enum MemoOperator {
-    Memo(Trace),
-    Pop,
-}
-
 mod cache;
 mod call_stack;
 

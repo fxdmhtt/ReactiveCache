@@ -61,14 +61,12 @@ where
         {
             self.dependents.borrow_mut().push(*last);
         }
-        if let Some(e) = call_stack::current_effect_peak()
-            && !self
-                .effects
-                .borrow()
-                .iter()
-                .any(|w| w.as_ptr() == Rc::as_ptr(&e))
-        {
-            self.effects.borrow_mut().push(Rc::downgrade(&e));
+
+        if let Some(e) = call_stack::current_effect_peak() {
+            let e = Rc::downgrade(&e);
+            if !self.effects.borrow().iter().any(|w| Weak::ptr_eq(w, &e)) {
+                self.effects.borrow_mut().push(e);
+            }
         }
 
         self.value.borrow()
