@@ -32,7 +32,7 @@ pub fn signal(input: TokenStream) -> TokenStream {
     let ident_set = format_ident!("{}_set", ident);
     let ident_fn = format_ident!("{}", ident);
 
-    let lazy_ty = quote! { once_cell::unsync::Lazy<std::rc::Rc<reactive_cache::Signal<#ty>>> };
+    let lazy_ty = quote! { once_cell::unsync::Lazy<reactive_cache::Signal<#ty>> };
     let expr = quote! { once_cell::unsync::Lazy::new(|| reactive_cache::Signal::new(Some(#expr))) };
 
     let expanded = quote! {

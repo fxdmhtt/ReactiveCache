@@ -3,15 +3,13 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use mvvm::System::ComponentModel::ObservableProperty;
-
 use crate::{Effect, Observable, call_stack};
 
 pub struct Signal<T>
 where
     T: Eq + Default + 'static,
 {
-    prop: ObservableProperty<'static, T>,
+    value: RefCell<T>,
     dependents: RefCell<Vec<&'static dyn Observable>>,
     effects: RefCell<Vec<Weak<Effect>>>,
 }
@@ -35,28 +33,22 @@ where
         });
     }
 
-    pub fn new(value: Option<T>) -> Rc<Self> {
-        let s = Rc::new(Signal {
-            prop: value.map_or_else(Default::default, ObservableProperty::new),
+    #[allow(non_snake_case)]
+    fn OnPropertyChanged(&self) {
+        self.flush_effects()
+    }
+
+    #[allow(non_snake_case)]
+    fn OnPropertyChanging(&self) {
+        self.invalidate()
+    }
+
+    pub fn new(value: Option<T>) -> Self {
+        Signal {
+            value: value.unwrap_or_default().into(),
             dependents: vec![].into(),
             effects: vec![].into(),
-        });
-
-        let weak = Rc::downgrade(&s);
-        s.prop.PropertyChanging.borrow_mut().add(move |_| {
-            if let Some(s) = weak.upgrade() {
-                s.invalidate();
-            }
-        });
-
-        let weak = Rc::downgrade(&s);
-        s.prop.PropertyChanged.borrow_mut().add(move |_| {
-            if let Some(s) = weak.upgrade() {
-                s.flush_effects();
-            }
-        });
-
-        s
+        }
     }
 
     pub fn get(&self) -> Ref<'_, T> {
@@ -79,10 +71,20 @@ where
             self.effects.borrow_mut().push(Rc::downgrade(&e));
         }
 
-        self.prop.GetValue()
+        self.value.borrow()
     }
 
     pub fn set(&self, value: T) -> bool {
-        self.prop.SetValue(value)
+        if *self.value.borrow() == value {
+            return false;
+        }
+
+        self.OnPropertyChanging();
+
+        *self.value.borrow_mut() = value;
+
+        self.OnPropertyChanged();
+
+        true
     }
 }
