@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use crate::{Observable, call_stack, remove_from_cache, store_in_cache, touch};
 
 /// A memoized reactive computation that caches its result and tracks dependencies.
@@ -19,7 +21,7 @@ where
     F: Fn() -> T,
 {
     f: F,
-    dependents: Vec<&'static dyn Observable>,
+    dependents: RefCell<Vec<&'static dyn Observable>>,
 }
 
 impl<T, F> Observable for Memo<T, F>
@@ -28,7 +30,7 @@ where
 {
     fn invalidate(&'static self) {
         remove_from_cache(self);
-        self.dependents.iter().for_each(|d| d.invalidate());
+        self.dependents.borrow().iter().for_each(|d| d.invalidate());
     }
 }
 
@@ -48,7 +50,7 @@ where
     pub fn new(f: F) -> Self {
         Memo {
             f,
-            dependents: vec![],
+            dependents: vec![].into(),
         }
     }
 
@@ -65,14 +67,18 @@ where
     /// static mut MEMO: Lazy<Memo<i32, fn() -> i32>> = Lazy::new(|| Memo::new(|| 5));
     /// assert_eq!(unsafe { (*MEMO).get() }, 5);
     /// ```
-    pub fn get(&'static mut self) -> T
+    pub fn get(&'static self) -> T
     where
         T: Clone,
     {
         if let Some(last) = call_stack::last()
-            && !self.dependents.iter().any(|d| std::ptr::eq(*d, *last))
+            && !self
+                .dependents
+                .borrow()
+                .iter()
+                .any(|d| std::ptr::eq(*d, *last))
         {
-            self.dependents.push(*last);
+            self.dependents.borrow_mut().push(*last);
         }
 
         call_stack::push(self);
