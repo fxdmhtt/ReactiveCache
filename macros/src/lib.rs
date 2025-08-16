@@ -183,7 +183,7 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
         static mut #ident: #ty = #expr;
 
         #vis #sig
-        where #output_ty: Clone + 'static
+        where #output_ty: Clone
         {
             unsafe { (*#ident).get() }
         }
