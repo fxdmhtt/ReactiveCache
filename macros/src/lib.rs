@@ -39,7 +39,17 @@ use syn::{Expr, Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
 /// # Warning
 ///
 /// **Do not set any signal that is part of the same effect chain.**
-/// Doing so will trigger infinite recursion or panic due to RefCell borrow conflicts.
+///
+/// Effects automatically run whenever one of their dependent signals changes.
+/// If an effect modifies a signal that it (directly or indirectly) observes,
+/// it creates a circular dependency. This can lead to:
+/// - an infinite loop of updates, or
+/// - conflicting updates that the system cannot resolve.
+///
+/// In the general case, it is impossible to automatically determine whether
+/// such an effect will ever terminate—this is essentially a version of the
+/// halting problem. Therefore, you must ensure manually that effects do not
+/// update signals within their own dependency chain.
 #[proc_macro]
 pub fn signal(input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemStatic);
@@ -234,7 +244,17 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// # Warning
 ///
 /// **Do not set any signal that is part of the same effect chain.**
-/// Doing so will trigger infinite recursion or panic due to RefCell borrow conflicts.
+///
+/// Effects automatically run whenever one of their dependent signals changes.
+/// If an effect modifies a signal that it (directly or indirectly) observes,
+/// it creates a circular dependency. This can lead to:
+/// - an infinite loop of updates, or
+/// - conflicting updates that the system cannot resolve.
+///
+/// In the general case, it is impossible to automatically determine whether
+/// such an effect will ever terminate—this is essentially a version of the
+/// halting problem. Therefore, you must ensure manually that effects do not
+/// update signals within their own dependency chain.
 #[proc_macro]
 pub fn effect(input: TokenStream) -> TokenStream {
     let expr = parse_macro_input!(input as Expr);
