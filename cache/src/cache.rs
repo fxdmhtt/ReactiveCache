@@ -17,7 +17,7 @@ pub(crate) fn touch<T: 'static>(key: &'static dyn Observable) -> Option<Rc<T>> {
     // When the Effect performs dependency calculations for the first time,
     // it must ignore the relevant cache,
     // otherwise the underlying Signal will not remember the Effect.
-    if crate::current_effect_peak().is_some() {
+    if crate::creating_effect_peak().is_some() {
         remove_from_cache(key);
         return None;
     }

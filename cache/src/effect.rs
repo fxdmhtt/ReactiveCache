@@ -8,9 +8,9 @@ impl Effect {
     pub fn new(f: impl Fn() + 'static) -> Rc<Self> {
         let e = Rc::new(Effect { f: Box::new(f) });
 
-        crate::current_effect_push(e.clone());
+        crate::creating_effect_push(Rc::downgrade(&e));
         e.run();
-        crate::current_effect_pop();
+        crate::creating_effect_pop();
 
         e
     }

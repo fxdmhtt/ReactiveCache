@@ -1,6 +1,6 @@
 use std::{
     cell::{Ref, RefCell},
-    rc::{Rc, Weak},
+    rc::Weak,
 };
 
 use crate::{Effect, Observable, call_stack};
@@ -62,11 +62,10 @@ where
             self.dependents.borrow_mut().push(*last);
         }
 
-        if let Some(e) = call_stack::current_effect_peak() {
-            let e = Rc::downgrade(&e);
-            if !self.effects.borrow().iter().any(|w| Weak::ptr_eq(w, &e)) {
-                self.effects.borrow_mut().push(e);
-            }
+        if let Some(e) = call_stack::creating_effect_peak()
+            && !self.effects.borrow().iter().any(|w| Weak::ptr_eq(w, &e))
+        {
+            self.effects.borrow_mut().push(e);
         }
 
         self.value.borrow()
