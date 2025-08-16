@@ -2,7 +2,6 @@ use crate::{Observable, call_stack, remove_from_cache, store_in_cache, touch};
 
 pub struct Memo<T, F>
 where
-    T: Clone,
     F: Fn() -> T,
 {
     f: F,
@@ -11,7 +10,6 @@ where
 
 impl<T, F> Observable for Memo<T, F>
 where
-    T: Clone,
     F: Fn() -> T,
 {
     fn invalidate(&'static self) {
@@ -22,7 +20,6 @@ where
 
 impl<T, F> Memo<T, F>
 where
-    T: Clone,
     F: Fn() -> T,
 {
     pub fn new(f: F) -> Self {
@@ -32,7 +29,10 @@ where
         }
     }
 
-    pub fn get(&'static mut self) -> T {
+    pub fn get(&'static mut self) -> T
+    where
+        T: Clone,
+    {
         if let Some(last) = call_stack::last()
             && !self.dependents.iter().any(|d| std::ptr::eq(*d, *last))
         {

@@ -3,21 +3,15 @@ use std::{
     rc::Weak,
 };
 
-use crate::{Effect, Observable, call_stack};
+use crate::{IEffect, Observable, call_stack};
 
-pub struct Signal<T>
-where
-    T: Eq + Default + 'static,
-{
+pub struct Signal<T> {
     value: RefCell<T>,
     dependents: RefCell<Vec<&'static dyn Observable>>,
-    effects: RefCell<Vec<Weak<Effect>>>,
+    effects: RefCell<Vec<Weak<dyn IEffect>>>,
 }
 
-impl<T> Signal<T>
-where
-    T: Eq + Default + 'static,
-{
+impl<T> Signal<T> {
     fn invalidate(&self) {
         self.dependents.borrow().iter().for_each(|d| d.invalidate());
     }
@@ -43,7 +37,10 @@ where
         self.invalidate()
     }
 
-    pub fn new(value: Option<T>) -> Self {
+    pub fn new(value: Option<T>) -> Self
+    where
+        T: Default,
+    {
         Signal {
             value: value.unwrap_or_default().into(),
             dependents: vec![].into(),
@@ -71,7 +68,10 @@ where
         self.value.borrow()
     }
 
-    pub fn set(&self, value: T) -> bool {
+    pub fn set(&self, value: T) -> bool
+    where
+        T: Eq,
+    {
         if *self.value.borrow() == value {
             return false;
         }
