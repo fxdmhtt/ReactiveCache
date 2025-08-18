@@ -1,6 +1,6 @@
 [package]
 name = "reactive-cache"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "A lightweight, dependency-aware memoization library with automatic invalidation and lazy recomputation."
 repository = "https://github.com/fxdmhtt/ReactiveCache"
