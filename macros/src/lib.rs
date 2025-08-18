@@ -24,10 +24,10 @@ use syn::{Expr, Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
 ///
 /// signal!(static mut A: i32 = 10;);
 ///
-/// assert_eq!(A(), 10);
-/// assert_eq!(A_get(), 10);
+/// assert_eq!(*A(), 10);
+/// assert_eq!(*A_get(), 10);
 /// assert!(A_set(20));
-/// assert_eq!(A(), 20);
+/// assert_eq!(*A(), 20);
 /// assert!(!A_set(20)); // No change
 /// ```
 ///
@@ -88,8 +88,8 @@ pub fn signal(input: TokenStream) -> TokenStream {
         #vis #static_token #mutability #ident_p #colon_token #lazy_ty #eq_token #expr #semi_token
 
         #[allow(non_snake_case)]
-        pub fn #ident_get() -> #ty {
-            unsafe { *#ident_p.get() }
+        pub fn #ident_get() -> std::cell::Ref<'static, #ty> {
+            unsafe { #ident_p.get() }
         }
 
         #[allow(non_snake_case)]
@@ -98,7 +98,7 @@ pub fn signal(input: TokenStream) -> TokenStream {
         }
 
         #[allow(non_snake_case)]
-        pub fn #ident_fn() -> #ty {
+        pub fn #ident_fn() -> std::cell::Ref<'static, #ty> {
             #ident_get()
         }
     };

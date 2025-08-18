@@ -16,19 +16,19 @@ signal!(
 );
 
 signal!(
-    static mut B: i32 = 5;
+    static mut B: String = 5.to_string();
 );
 
 pub fn source_a() -> i32 {
     unsafe { SOURCE_A_CALLED += 1 };
 
-    A_get()
+    *A_get()
 }
 
 pub fn source_b() -> i32 {
     unsafe { SOURCE_B_CALLED += 1 };
 
-    B()
+    B().parse::<i32>().unwrap()
 }
 
 #[memo]

@@ -17,19 +17,19 @@ signal!(
 );
 
 signal!(
-    static mut B: i32 = 5;
+    static mut B: String = 5.to_string();
 );
 
 pub fn source_a() -> i32 {
     SOURCE_A_CALLED.set(true);
 
-    A_get()
+    *A_get()
 }
 
 pub fn source_b() -> i32 {
     SOURCE_B_CALLED.set(true);
 
-    B()
+    B().parse::<i32>().unwrap()
 }
 
 #[memo]
