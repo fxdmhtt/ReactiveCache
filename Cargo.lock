@@ -77,7 +77,6 @@ dependencies = [
 name = "reactive-macros"
 version = "0.2.0"
 dependencies = [
- "once_cell",
  "proc-macro2",
  "quote",
  "reactive-cache",

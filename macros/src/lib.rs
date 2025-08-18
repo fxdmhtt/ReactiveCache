@@ -80,8 +80,8 @@ pub fn signal(input: TokenStream) -> TokenStream {
     let ident_set = format_ident!("{}_set", ident);
     let ident_fn = format_ident!("{}", ident);
 
-    let lazy_ty = quote! { once_cell::unsync::Lazy<reactive_cache::Signal<#ty>> };
-    let expr = quote! { once_cell::unsync::Lazy::new(|| reactive_cache::Signal::new(Some(#expr))) };
+    let lazy_ty = quote! { reactive_cache::Lazy<reactive_cache::Signal<#ty>> };
+    let expr = quote! { reactive_cache::Lazy::new(|| reactive_cache::Signal::new(Some(#expr))) };
 
     let expanded = quote! {
         #(#attrs)*
@@ -176,8 +176,8 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let ident = format_ident!("{}", ident.to_string().to_uppercase());
     let ty =
-        quote! { once_cell::unsync::Lazy<reactive_cache::Memo<#output_ty, fn() -> #output_ty>> };
-    let expr = quote! { once_cell::unsync::Lazy::new(|| reactive_cache::Memo::new(|| #block)) };
+        quote! { reactive_cache::Lazy<reactive_cache::Memo<#output_ty, fn() -> #output_ty>> };
+    let expr = quote! { reactive_cache::Lazy::new(|| reactive_cache::Memo::new(|| #block)) };
 
     let expanded = quote! {
         static mut #ident: #ty = #expr;
