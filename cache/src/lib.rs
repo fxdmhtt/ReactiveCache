@@ -15,6 +15,8 @@ pub(crate) trait Observable {
     fn invalidate(&'static self);
 }
 
+pub use once_cell::unsync::Lazy;
+
 #[cfg(feature = "macros")]
 #[cfg_attr(docsrs, doc(cfg(feature = "macros")))]
 pub use reactive_macros::*;
