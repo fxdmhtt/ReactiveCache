@@ -11,3 +11,10 @@ categories = ["caching"]
 [dependencies]
 lru = "0.16.0"
 once_cell = "1.21.3"
+
+reactive-macros = { path = "../macros", optional = true }
+
+[features]
+default = []
+
+macros = ["reactive-macros"]

@@ -70,6 +70,7 @@ version = "0.1.0"
 dependencies = [
  "lru",
  "once_cell",
+ "reactive-macros",
 ]
 
 [[package]]
