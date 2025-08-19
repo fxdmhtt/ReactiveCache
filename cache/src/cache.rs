@@ -20,7 +20,7 @@ where
     // When the Effect performs dependency calculations for the first time,
     // it must ignore the relevant cache,
     // otherwise the underlying Signal will not remember the Effect.
-    if crate::creating_effect_peak().is_some() {
+    if unsafe { crate::call_stack::CREATING_EFFECT } {
         remove_from_cache(key);
         return None;
     }

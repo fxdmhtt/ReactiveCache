@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Expr, Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
+use syn::{Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
 
 /// Wraps a `static mut` variable as a reactive signal (similar to a property)
 /// with getter and setter functions.
@@ -175,8 +175,7 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 
     let ident = format_ident!("{}", ident.to_string().to_uppercase());
-    let ty =
-        quote! { reactive_cache::Lazy<reactive_cache::Memo<#output_ty, fn() -> #output_ty>> };
+    let ty = quote! { reactive_cache::Lazy<reactive_cache::Memo<#output_ty, fn() -> #output_ty>> };
     let expr = quote! { reactive_cache::Lazy::new(|| reactive_cache::Memo::new(|| #block)) };
 
     let expanded = quote! {
@@ -186,95 +185,6 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
         where #output_ty: Clone
         {
             unsafe { (*#ident).get() }
-        }
-    };
-
-    expanded.into()
-}
-
-/// Creates a reactive effect from a closure or function pointer.
-///
-/// The `effect!` procedural macro is a convenient wrapper around `reactive_cache::Effect::new`.
-/// It allows you to quickly register a reactive effect that automatically tracks
-/// dependencies and re-runs when they change.
-///
-/// # Requirements
-///
-/// - The argument must be either:
-///   1. A closure (e.g., `|| { ... }`), or  
-///   2. A function pointer / function name with zero arguments.
-/// - The closure or function must return `()` (no return value required).
-///
-/// # Examples
-///
-/// ```rust
-/// use std::{cell::Cell, rc::Rc};
-/// use reactive_macros::{effect, signal};
-///
-/// signal!(static mut A: i32 = 1;);
-///
-/// // Track effect runs
-/// let counter = Rc::new(Cell::new(0));
-/// let counter_clone = counter.clone();
-///
-/// let e = effect!(move || {
-///     let _ = A();           // reading the signal
-///     counter_clone.set(counter_clone.get() + 1); // increment effect counter
-/// });
-///
-/// let ptr = Rc::into_raw(e); // actively leak to avoid implicitly dropping the effect
-///
-/// // Effect runs immediately upon creation
-/// assert_eq!(counter.get(), 1);
-///
-/// // Changing A triggers the effect again
-/// assert!(A_set(10));
-/// assert_eq!(counter.get(), 2);
-///
-/// // Setting the same value does NOT trigger the effect
-/// assert!(!A_set(10));
-/// assert_eq!(counter.get(), 2);
-/// ```
-///
-/// # SAFETY
-///
-/// The macro internally uses `reactive_cache::Effect`, which relies on
-/// `static` tracking and is **not thread-safe**. Only use in single-threaded contexts.
-///
-/// # Warning
-///
-/// **Do not set any signal that is part of the same effect chain.**
-///
-/// Effects automatically run whenever one of their dependent signals changes.
-/// If an effect modifies a signal that it (directly or indirectly) observes,
-/// it creates a circular dependency. This can lead to:
-/// - an infinite loop of updates, or
-/// - conflicting updates that the system cannot resolve.
-///
-/// In the general case, it is impossible to automatically determine whether
-/// such an effect will ever terminate—this is essentially a version of the
-/// halting problem. Therefore, you must ensure manually that effects do not
-/// update signals within their own dependency chain.
-#[proc_macro]
-pub fn effect(input: TokenStream) -> TokenStream {
-    let expr = parse_macro_input!(input as Expr);
-
-    let expanded = match expr {
-        Expr::Path(path) if path.path.get_ident().is_some() => {
-            let ident = path.path.get_ident().unwrap();
-            quote! {
-                reactive_cache::Effect::new(#ident)
-            }
-        }
-        Expr::Closure(closure) => {
-            quote! {
-                reactive_cache::Effect::new(#closure)
-            }
-        }
-        _ => {
-            return syn::Error::new_spanned(&expr, "Expected a variable name or a closure")
-                .to_compile_error()
-                .into();
         }
     };
 

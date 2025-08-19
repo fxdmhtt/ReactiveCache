@@ -14,6 +14,9 @@ once_cell = "1.21.3"
 
 reactive-macros = { version = "0.2.0", path = "../macros", optional = true }
 
+[dev-dependencies]
+reactive-macros = { path = "../macros" }
+
 [features]
 default = []
 

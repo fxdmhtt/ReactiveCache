@@ -29,6 +29,27 @@ impl<F> Effect<F>
 where
     F: Fn(),
 {
+    fn new_inner<D>(f: F, deps: Option<D>) -> Rc<dyn IEffect>
+    where
+        F: 'static,
+        D: Fn() + 'static,
+    {
+        let e: Rc<dyn IEffect> = Rc::new(Effect { f });
+
+        unsafe { crate::call_stack::CREATING_EFFECT = true };
+        crate::current_effect_push(Rc::downgrade(&e));
+
+        if let Some(deps) = deps {
+            deps();
+        }
+        e.run();
+
+        crate::current_effect_pop();
+        unsafe { crate::call_stack::CREATING_EFFECT = false };
+
+        e
+    }
+
     /// Creates a new `Effect`, wrapping the provided closure
     /// and running it immediately for dependency tracking.
     ///
@@ -56,13 +77,68 @@ where
     where
         F: 'static,
     {
-        let e: Rc<dyn IEffect> = Rc::new(Effect { f });
+        Self::new_inner::<fn()>(f, None)
+    }
 
-        crate::creating_effect_push(Rc::downgrade(&e));
-        e.run();
-        crate::creating_effect_pop();
-
-        e
+    /// Creates a new `Effect` with an additional dependency initializer.
+    ///
+    /// This works like [`Effect::new`], but also runs the provided `deps` closure
+    /// during the initial dependency collection phase.
+    ///
+    /// This is useful when your effect closure contains conditional logic
+    /// (e.g. `if`/`match`), and you want to ensure that *all possible branches*
+    /// have their dependencies tracked on the first run.
+    ///
+    /// Returns an `Rc<dyn IEffect>` so the effect can be stored and shared
+    /// as a non-generic trait object.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::{cell::Cell, rc::Rc};
+    /// use reactive_cache::Effect;
+    /// use reactive_macros::signal;
+    ///
+    /// signal!(static mut FLAG: bool = true;);
+    /// signal!(static mut COUNTER: i32 = 10;);
+    ///
+    /// let result = Rc::new(Cell::new(0));
+    /// let r_clone = result.clone();
+    ///
+    /// // Effect closure has a conditional branch
+    /// let effect = Effect::new_with_deps(
+    ///     move || {
+    ///         match *FLAG_get() {
+    ///             true => {}
+    ///             false => {
+    ///                 r_clone.set(*COUNTER_get());
+    ///             }
+    ///         }
+    ///     },
+    ///     // Explicitly declare both `FLAG` and `COUNTER` as dependencies
+    ///     move || {
+    ///         FLAG();
+    ///         COUNTER();
+    ///     },
+    /// );
+    ///
+    /// assert_eq!(result.get(), 0); // runs with FLAG = true
+    /// 
+    /// // Changing `FLAG` to false will trigger the effect
+    /// FLAG_set(false);
+    /// assert_eq!(result.get(), 10);
+    ///
+    /// // Changing `COUNTER` still triggers the effect, even though
+    /// // `FLAG` was true on the first run.
+    /// COUNTER_set(20);
+    /// assert_eq!(result.get(), 20);
+    /// ```
+    pub fn new_with_deps<D>(f: F, deps: D) -> Rc<dyn IEffect>
+    where
+        F: 'static,
+        D: Fn() + 'static,
+    {
+        Self::new_inner(f, Some(deps))
     }
 }
 

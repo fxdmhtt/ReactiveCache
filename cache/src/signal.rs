@@ -103,7 +103,7 @@ impl<T> Signal<T> {
         }
 
         // Track effects in the call stack
-        if let Some(e) = call_stack::creating_effect_peak()
+        if let Some(e) = call_stack::current_effect_peak()
             && !self.effects.borrow().iter().any(|w| Weak::ptr_eq(w, &e))
         {
             self.effects.borrow_mut().push(e);
