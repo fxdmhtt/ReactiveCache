@@ -2,7 +2,7 @@
 
 use std::cell::Cell;
 
-use reactive_macros::{memo, signal};
+use reactive_macros::{memo, ref_signal, signal};
 
 thread_local! {
     static SOURCE_A_CALLED: Cell<bool> = const { Cell::new(false) };
@@ -16,20 +16,20 @@ signal!(
     static mut A: i32 = 10;
 );
 
-signal!(
+ref_signal!(
     static mut B: String = 5.to_string();
 );
 
 pub fn source_a() -> i32 {
     SOURCE_A_CALLED.set(true);
 
-    *A_get()
+    A()
 }
 
 pub fn source_b() -> i32 {
     SOURCE_B_CALLED.set(true);
 
-    B().parse::<i32>().unwrap()
+    B_get().parse::<i32>().unwrap()
 }
 
 #[memo]

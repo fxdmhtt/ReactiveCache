@@ -3,7 +3,7 @@
 use std::{cell::Cell, rc::Rc};
 
 use reactive_cache::effect;
-use reactive_macros::{memo, signal};
+use reactive_macros::{memo, ref_signal, signal};
 
 static mut SOURCE_A_CALLED: i32 = 0;
 static mut SOURCE_B_CALLED: i32 = 0;
@@ -16,20 +16,20 @@ signal!(
     static mut A: i32 = 10;
 );
 
-signal!(
+ref_signal!(
     static mut B: String = 5.to_string();
 );
 
 pub fn source_a() -> i32 {
     unsafe { SOURCE_A_CALLED += 1 };
 
-    *A_get()
+    A()
 }
 
 pub fn source_b() -> i32 {
     unsafe { SOURCE_B_CALLED += 1 };
 
-    B().parse::<i32>().unwrap()
+    B_get().parse::<i32>().unwrap()
 }
 
 #[memo]
@@ -140,10 +140,10 @@ fn switch_effect_test() {
     let b_rst_clone = b_rst.clone();
     let _ = Rc::into_raw(effect!(
         move || {
-            match *SWITCH_A() {
+            match SWITCH_A() {
                 true => {}
                 false => {
-                    b_rst_clone.set(*SWITCH_B());
+                    b_rst_clone.set(*SWITCH_B_get());
                 }
             }
         },
