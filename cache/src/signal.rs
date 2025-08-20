@@ -34,6 +34,18 @@ impl<T> Signal<T> {
 
     /// Runs all dependent effects.
     fn flush_effects(&self) {
+        // When triggering an Effect, dependencies are not collected for that Effect.
+        //
+        // The issue arises from the creation of Effect A, which may trigger Effect B.
+        // In Effect B, the signal get operation causes incorrect tracking of Effect A.
+        // In this case, dependency tracking for Effect A should not be performed
+        // until Effect B exits the triggering phase.
+        //
+        // The root cause of this issue is a temporary violation of the assumption that
+        // "an Effect is always the end point of the call chain."
+        let creating_effect = unsafe { crate::call_stack::CREATING_EFFECT };
+        unsafe { crate::call_stack::CREATING_EFFECT = false };
+
         self.effects.borrow_mut().retain(|w| {
             if let Some(e) = w.upgrade() {
                 e.run();
@@ -42,6 +54,8 @@ impl<T> Signal<T> {
                 false
             }
         });
+
+        unsafe { crate::call_stack::CREATING_EFFECT = creating_effect };
     }
 
     #[allow(non_snake_case)]
@@ -103,7 +117,8 @@ impl<T> Signal<T> {
         }
 
         // Track effects in the call stack
-        if let Some(e) = call_stack::current_effect_peak()
+        if unsafe { call_stack::CREATING_EFFECT }
+            && let Some(e) = call_stack::current_effect_peak()
             && !self.effects.borrow().iter().any(|w| Weak::ptr_eq(w, &e))
         {
             self.effects.borrow_mut().push(e);

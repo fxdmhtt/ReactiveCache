@@ -126,6 +126,21 @@ fn complex_dependency_effect_test() {
 }
 
 signal!(
+    static mut LOOP_A: i32 = 10;
+);
+
+#[test]
+fn loop_effect_test() {
+    let _ = Rc::into_raw(effect!(|| {
+        LOOP_A();
+    }));
+
+    let _ = Rc::into_raw(effect!(|| {
+        LOOP_A_set(20);
+    }));
+}
+
+signal!(
     static mut SWITCH_A: bool = true;
 );
 
