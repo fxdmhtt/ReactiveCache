@@ -23,7 +23,7 @@
 /// ```rust
 /// use std::{cell::Cell, rc::Rc};
 /// use reactive_cache::effect;
-/// use reactive_macros::signal;
+/// use reactive_macros::{ref_signal, signal};
 ///
 /// signal!(static mut A: i32 = 1;);
 ///

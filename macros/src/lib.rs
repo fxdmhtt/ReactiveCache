@@ -10,7 +10,7 @@ use syn::{Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
 /// 1. A `_get()` function that returns a reference to the value, allowing read access.
 ///    - This reference behaves like a normal immutable reference for most purposes.
 /// 2. A `_set(value)` function to write the value (returns `true` if changed).
-/// 
+///
 /// Unlike `signal!`, `ref_signal!` does **not** generate a same-named function that directly returns the value.
 ///
 /// # Requirements
@@ -119,7 +119,7 @@ pub fn ref_signal(input: TokenStream) -> TokenStream {
 /// # Examples
 ///
 /// ```rust
-/// use reactive_macros::signal;
+/// use reactive_macros::{ref_signal, signal};
 ///
 /// signal!(static mut A: i32 = 10;);
 ///
@@ -161,7 +161,7 @@ pub fn signal(input: TokenStream) -> TokenStream {
     let ident_fn = format_ident!("{}", ident);
 
     let expanded = quote! {
-        reactive_macros::ref_signal!(#input_clone);
+        ref_signal!(#input_clone);
 
         #[allow(non_snake_case)]
         pub fn #ident_fn() -> #ty {

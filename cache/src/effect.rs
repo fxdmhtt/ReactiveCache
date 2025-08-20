@@ -97,7 +97,7 @@ where
     /// ```
     /// use std::{cell::Cell, rc::Rc};
     /// use reactive_cache::Effect;
-    /// use reactive_macros::signal;
+    /// use reactive_macros::{ref_signal, signal};
     ///
     /// signal!(static mut FLAG: bool = true;);
     /// signal!(static mut COUNTER: i32 = 10;);
@@ -123,7 +123,7 @@ where
     /// );
     ///
     /// assert_eq!(result.get(), 0); // runs with FLAG = true
-    /// 
+    ///
     /// // Changing `FLAG` to false will trigger the effect
     /// FLAG_set(false);
     /// assert_eq!(result.get(), 10);
