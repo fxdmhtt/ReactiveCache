@@ -2,6 +2,7 @@
 name = "reactive-cache"
 version = "0.3.3"
 edition = "2024"
+authors = ["Junkang Yuan <yuanjunkang@gmail.com>"]
 description = "A lightweight, dependency-aware memoization library with automatic invalidation and lazy recomputation."
 repository = "https://github.com/fxdmhtt/ReactiveCache"
 license = "GPL-2.0"
