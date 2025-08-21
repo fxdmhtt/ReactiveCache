@@ -3,7 +3,7 @@ use std::{
     rc::Weak,
 };
 
-use crate::{IEffect, Observable, call_stack};
+use crate::{IEffect, Observable, call_stack, effect_stack::EffectStackEntry};
 
 /// A reactive signal that holds a value, tracks dependencies, and triggers effects.
 ///
@@ -35,27 +35,14 @@ impl<T> Signal<T> {
     /// Runs all dependent effects.
     fn flush_effects(&self) {
         // When triggering an Effect, dependencies are not collected for that Effect.
-        //
-        // The issue arises from the creation of Effect A, which may trigger Effect B.
-        // In Effect B, the signal get operation causes incorrect tracking of Effect A.
-        // In this case, dependency tracking for Effect A should not be performed
-        // until Effect B exits the triggering phase.
-        //
-        // The root cause of this issue is a temporary violation of the assumption that
-        // "an Effect is always the end point of the call chain."
-        let creating_effect = unsafe { crate::call_stack::CREATING_EFFECT };
-        unsafe { crate::call_stack::CREATING_EFFECT = false };
-
         self.effects.borrow_mut().retain(|w| {
             if let Some(e) = w.upgrade() {
-                e.run();
+                crate::effect::run_untracked(&e);
                 true
             } else {
                 false
             }
         });
-
-        unsafe { crate::call_stack::CREATING_EFFECT = creating_effect };
     }
 
     #[allow(non_snake_case)]
@@ -117,11 +104,14 @@ impl<T> Signal<T> {
         }
 
         // Track effects in the call stack
-        if unsafe { call_stack::CREATING_EFFECT }
-            && let Some(e) = call_stack::current_effect_peak()
-            && !self.effects.borrow().iter().any(|w| Weak::ptr_eq(w, &e))
+        if let Some(EffectStackEntry {
+            effect: e,
+            collecting,
+        }) = crate::effect_stack::effect_peak()
+            && *collecting
+            && !self.effects.borrow().iter().any(|w| Weak::ptr_eq(w, e))
         {
-            self.effects.borrow_mut().push(e);
+            self.effects.borrow_mut().push(e.clone());
         }
 
         self.value.borrow()

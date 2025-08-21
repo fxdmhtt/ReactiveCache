@@ -163,6 +163,7 @@ fn switch_effect_test() {
             }
         },
         || {
+            SWITCH_A();
             SWITCH_B();
         }
     ));

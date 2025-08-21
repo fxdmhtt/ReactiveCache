@@ -8,10 +8,14 @@
 /// # Forms
 ///
 /// - `effect!(f)`  
-///   Equivalent to calling [`Effect::new(f)`].
+///   Equivalent to calling [`Effect::new(f)`]. In this form, dependencies are
+///   automatically tracked while executing `f`.
 ///
 /// - `effect!(f, deps)`  
-///   Equivalent to calling [`Effect::new_with_deps(f, deps)`].
+///   Equivalent to calling [`Effect::new_with_deps(f, deps)`]. In this form,
+///   **dependency tracking is performed only when running `deps`**, not `f`.
+///   The closure `f` will still be executed when dependencies change, but its
+///   execution does **not** collect new dependencies.
 ///
 /// # Requirements
 ///

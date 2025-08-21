@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use crate::effect_stack::{effect_peak, effect_pop, effect_push};
+
 /// A reactive effect that runs a closure whenever its dependencies change.
 ///
 /// `Effect<F>` behaves similarly to an "event listener" or a callback,
@@ -20,7 +22,7 @@ use std::rc::Rc;
 ///   The closure is executed immediately upon creation and tracked for reactive updates.
 pub struct Effect<F>
 where
-    F: Fn(),
+    F: Fn() + 'static,
 {
     f: F,
 }
@@ -31,21 +33,26 @@ where
 {
     fn new_inner<D>(f: F, deps: Option<D>) -> Rc<dyn IEffect>
     where
-        F: 'static,
         D: Fn() + 'static,
     {
         let e: Rc<dyn IEffect> = Rc::new(Effect { f });
+        let w = Rc::downgrade(&e);
 
-        unsafe { crate::call_stack::CREATING_EFFECT = true };
-        crate::current_effect_push(Rc::downgrade(&e));
-
-        if let Some(deps) = deps {
+        // Dependency collection only at creation time
+        effect_push(w.clone(), true);
+        if let Some(deps) = &deps {
             deps();
+        } else {
+            e.run();
         }
-        e.run();
+        effect_pop(w.clone(), true);
 
-        crate::current_effect_pop();
-        unsafe { crate::call_stack::CREATING_EFFECT = false };
+        // If there is an additional dependency initializer,
+        // the `Effect` needs to be run immediately
+        // after dependency collection is completed.
+        if deps.is_some() {
+            run_untracked(&e);
+        }
 
         e
     }
@@ -73,17 +80,18 @@ where
     /// assert_eq!(counter.get(), 1);
     /// ```
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(f: F) -> Rc<dyn IEffect>
-    where
-        F: 'static,
-    {
+    pub fn new(f: F) -> Rc<dyn IEffect> {
         Self::new_inner::<fn()>(f, None)
     }
 
     /// Creates a new `Effect` with an additional dependency initializer.
     ///
-    /// This works like [`Effect::new`], but also runs the provided `deps` closure
-    /// during the initial dependency collection phase.
+    /// This works like [`Effect::new`], but requires a `deps` closure to be provided,
+    /// which will be executed during the initial dependency collection phase.
+    ///
+    /// **Important:** Dependency tracking is performed **only when running `deps`**,
+    /// not `f`. The closure `f` will still be executed when dependencies change,
+    /// but its execution does **not** collect new dependencies.
     ///
     /// This is useful when your effect closure contains conditional logic
     /// (e.g. `if`/`match`), and you want to ensure that *all possible branches*
@@ -135,7 +143,6 @@ where
     /// ```
     pub fn new_with_deps<D>(f: F, deps: D) -> Rc<dyn IEffect>
     where
-        F: 'static,
         D: Fn() + 'static,
     {
         Self::new_inner(f, Some(deps))
@@ -152,6 +159,21 @@ pub trait IEffect {
     /// Runs the effect closure.
     ///
     /// Typically called by the reactive system when dependencies change.
+    ///
+    /// # Notes
+    ///
+    /// Any calls to `Effect` must be handled with care.
+    ///
+    /// After initialization, any calls to an `Effect` are completely dependent on
+    /// run() , including Signal-triggered runs or dependency collection. However,
+    /// these calls have different assumptions.
+    ///
+    /// Specifically, dependency collection for an `Effect` should be limited to
+    /// its directly connected Signals. In this case, the `Effect`'s call chain
+    /// conforms to the `Effect → Memo(s) → Signal(s)` model, which assumes that
+    /// the `Effect` must be the start of the call chain. Any Signals linked to
+    /// calls to other `Effect`s should not be collected, and runs triggered by
+    /// `Signal`s should not be subject to dependency collection.
     fn run(&self);
 }
 
@@ -160,6 +182,19 @@ where
     F: Fn(),
 {
     fn run(&self) {
+        assert!(
+            std::ptr::eq(&*effect_peak().unwrap().effect.upgrade().unwrap(), self),
+            "`Effect` is not pushed onto the stack before being called."
+        );
+
         (self.f)()
     }
+}
+
+pub(crate) fn run_untracked(e: &Rc<dyn IEffect>) {
+    let w = Rc::downgrade(e);
+
+    effect_push(w.clone(), false);
+    e.run();
+    effect_pop(w.clone(), false);
 }
