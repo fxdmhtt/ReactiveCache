@@ -1,6 +1,6 @@
 [package]
 name = "reactive-macros"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2024"
 description = "A lightweight, dependency-aware memoization library with automatic invalidation and lazy recomputation."
 repository = "https://github.com/fxdmhtt/ReactiveCache"
