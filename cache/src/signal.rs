@@ -3,7 +3,7 @@ use std::{
     rc::Weak,
 };
 
-use crate::{IEffect, Observable, call_stack, effect_stack::EffectStackEntry};
+use crate::{Effect, Observable, call_stack, effect_stack::EffectStackEntry};
 
 /// A reactive signal that holds a value, tracks dependencies, and triggers effects.
 ///
@@ -23,7 +23,7 @@ use crate::{IEffect, Observable, call_stack, effect_stack::EffectStackEntry};
 pub struct Signal<T> {
     value: RefCell<T>,
     dependents: RefCell<Vec<&'static dyn Observable>>,
-    effects: RefCell<Vec<Weak<dyn IEffect>>>,
+    effects: RefCell<Vec<Weak<Effect>>>,
 }
 
 impl<T> Signal<T> {

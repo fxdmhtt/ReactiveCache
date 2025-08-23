@@ -4,16 +4,16 @@ use std::rc::Weak;
 
 use once_cell::unsync::Lazy;
 
-use crate::IEffect;
+use crate::Effect;
 
 pub(crate) struct EffectStackEntry {
-    pub(crate) effect: Weak<dyn IEffect>,
+    pub(crate) effect: Weak<Effect>,
     pub(crate) collecting: bool,
 }
 
 static mut EFFECT_STACK: Lazy<Vec<EffectStackEntry>> = Lazy::new(Vec::new);
 
-pub(crate) fn effect_push(effect: Weak<dyn IEffect>, collecting: bool) {
+pub(crate) fn effect_push(effect: Weak<Effect>, collecting: bool) {
     unsafe { EFFECT_STACK.push(EffectStackEntry { effect, collecting }) }
 }
 
@@ -21,7 +21,7 @@ pub(crate) fn effect_peak() -> Option<&'static EffectStackEntry> {
     unsafe { EFFECT_STACK.last() }
 }
 
-pub(crate) fn effect_pop(effect: Weak<dyn IEffect>, collecting: bool) {
+pub(crate) fn effect_pop(effect: Weak<Effect>, collecting: bool) {
     let e = unsafe { EFFECT_STACK.pop() }
         .expect("`effect_push` and `effect_pop` are called in pairs and should not be empty.");
 

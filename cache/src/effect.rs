@@ -4,64 +4,27 @@ use crate::effect_stack::{effect_peak, effect_pop, effect_push};
 
 /// A reactive effect that runs a closure whenever its dependencies change.
 ///
-/// `Effect<F>` behaves similarly to an "event listener" or a callback,
+/// `Effect` behaves similarly to an "event listener" or a callback,
 /// but it is automatically tied to any signals or memos it reads during execution.
 /// When those dependencies change, the effect will re-run.
 ///
-/// Note: The closure runs **immediately upon creation** via `Effect::wrap`,
+/// Note: The closure runs **immediately upon creation** via [`Effect::new`],
 /// so the effect is always initialized with an up-to-date value.
 ///
 /// In short:
-/// - Like a callback: wraps a closure of type `F` and runs it.
+/// - Like a callback: wraps a closure and runs it.
 /// - Adds tracking: automatically re-runs when dependent signals change.
 /// - Runs once immediately at creation.
-///
-/// # Type Parameters
-///
-/// - `F`: The closure type wrapped by this effect. Must implement `Fn()`.
-///   The closure is executed immediately upon creation and tracked for reactive updates.
-pub struct Effect<F>
-where
-    F: Fn() + 'static,
-{
-    f: F,
+pub struct Effect {
+    f: Box<dyn Fn()>,
 }
 
-impl<F> Effect<F>
-where
-    F: Fn(),
-{
-    fn new_inner<D>(f: F, deps: Option<D>) -> Rc<dyn IEffect>
-    where
-        D: Fn() + 'static,
-    {
-        let e: Rc<dyn IEffect> = Rc::new(Effect { f });
-        let w = Rc::downgrade(&e);
-
-        // Dependency collection only at creation time
-        effect_push(w.clone(), true);
-        if let Some(deps) = &deps {
-            deps();
-        } else {
-            e.run();
-        }
-        effect_pop(w.clone(), true);
-
-        // If there is an additional dependency initializer,
-        // the `Effect` needs to be run immediately
-        // after dependency collection is completed.
-        if deps.is_some() {
-            run_untracked(&e);
-        }
-
-        e
-    }
-
+impl Effect {
     /// Creates a new `Effect`, wrapping the provided closure
     /// and running it immediately for dependency tracking.
     ///
-    /// Returns an `Rc<dyn IEffect>` so the effect can be stored and shared
-    /// as a non-generic trait object.
+    /// Returns an `Rc<Effect>` so the effect can be stored and shared
+    /// as a non-generic type.
     ///
     /// # Examples
     ///
@@ -80,8 +43,16 @@ where
     /// assert_eq!(counter.get(), 1);
     /// ```
     #[allow(clippy::new_ret_no_self)]
-    pub fn new(f: F) -> Rc<dyn IEffect> {
-        Self::new_inner::<fn()>(f, None)
+    pub fn new(f: impl Fn() + 'static) -> Rc<Effect> {
+        let e: Rc<Effect> = Rc::new(Effect { f: Box::new(f) });
+        let w = Rc::downgrade(&e);
+
+        // Dependency collection only at creation time
+        effect_push(w.clone(), true);
+        e.run();
+        effect_pop(w.clone(), true);
+
+        e
     }
 
     /// Creates a new `Effect` with an additional dependency initializer.
@@ -97,8 +68,8 @@ where
     /// (e.g. `if`/`match`), and you want to ensure that *all possible branches*
     /// have their dependencies tracked on the first run.
     ///
-    /// Returns an `Rc<dyn IEffect>` so the effect can be stored and shared
-    /// as a non-generic trait object.
+    /// Returns an `Rc<Effect>` so the effect can be stored and shared
+    /// as a non-generic type.
     ///
     /// # Examples
     ///
@@ -141,46 +112,42 @@ where
     /// COUNTER_set(20);
     /// assert_eq!(result.get(), 20);
     /// ```
-    pub fn new_with_deps<D>(f: F, deps: D) -> Rc<dyn IEffect>
-    where
-        D: Fn() + 'static,
-    {
-        Self::new_inner(f, Some(deps))
-    }
-}
+    pub fn new_with_deps(f: impl Fn() + 'static, deps: impl Fn()) -> Rc<Effect> {
+        let e: Rc<Effect> = Rc::new(Effect { f: Box::new(f) });
+        let w = Rc::downgrade(&e);
 
-/// A non-generic trait for reactive effects.
-///
-/// `IEffect` serves as a type-erased trait for `Effect<F>` instances.
-/// By implementing `IEffect`, an `Effect<F>` can be stored as `Rc<dyn IEffect>`
-/// regardless of the specific closure type `F`. This allows the reactive system
-/// to manage multiple effects uniformly without exposing the generic type.
-pub trait IEffect {
+        // Dependency collection only at creation time
+        effect_push(w.clone(), true);
+        deps();
+        effect_pop(w.clone(), true);
+
+        // If there is an additional dependency initializer,
+        // the `Effect` needs to be run immediately
+        // after dependency collection is completed.
+        run_untracked(&e);
+
+        e
+    }
+
     /// Runs the effect closure.
     ///
     /// Typically called by the reactive system when dependencies change.
     ///
     /// # Notes
     ///
-    /// Any calls to `Effect` must be handled with care.
+    /// After initialization, any call to an `Effect` must go through `run()`.
+    /// Since the preconditions for executing `run()` differ depending on context
+    /// (e.g. dependency collection vs. signal-triggered updates), such calls
+    /// must be handled with care.
     ///
-    /// After initialization, any calls to an `Effect` are completely dependent on
-    /// run() , including Signal-triggered runs or dependency collection. However,
-    /// these calls have different assumptions.
+    /// Dependency collection for an `Effect` should be limited to its directly
+    /// connected signals. The intended call chain is:
     ///
-    /// Specifically, dependency collection for an `Effect` should be limited to
-    /// its directly connected Signals. In this case, the `Effect`'s call chain
-    /// conforms to the `Effect → Memo(s) → Signal(s)` model, which assumes that
-    /// the `Effect` must be the start of the call chain. Any Signals linked to
-    /// calls to other `Effect`s should not be collected, and runs triggered by
-    /// `Signal`s should not be subject to dependency collection.
-    fn run(&self);
-}
-
-impl<F> IEffect for Effect<F>
-where
-    F: Fn(),
-{
+    /// `Effect → Memo(s) → Signal(s)`
+    ///
+    /// In this model, the `Effect` must always be the root of the chain.
+    /// Other `Effect`s should not be tracked as dependencies, and runs triggered
+    /// by signals should not themselves cause further dependency collection.
     fn run(&self) {
         assert!(
             std::ptr::eq(&*effect_peak().unwrap().effect.upgrade().unwrap(), self),
@@ -191,7 +158,7 @@ where
     }
 }
 
-pub(crate) fn run_untracked(e: &Rc<dyn IEffect>) {
+pub(crate) fn run_untracked(e: &Rc<Effect>) {
     let w = Rc::downgrade(e);
 
     effect_push(w.clone(), false);

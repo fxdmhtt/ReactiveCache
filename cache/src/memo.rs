@@ -4,7 +4,7 @@ use crate::{Observable, call_stack, remove_from_cache, store_in_cache, touch};
 
 /// A memoized reactive computation that caches its result and tracks dependencies.
 ///
-/// `Memo<T, F>` behaves similarly to a computed property: it stores the result of a closure
+/// `Memo<T>` behaves similarly to a computed property: it stores the result of a closure
 /// and only recomputes when its dependencies change. Other signals or effects that access
 /// the memo will automatically be tracked.
 ///
@@ -15,29 +15,19 @@ use crate::{Observable, call_stack, remove_from_cache, store_in_cache, touch};
 /// # Type Parameters
 ///
 /// - `T`: The result type of the computation. Must implement `Clone`.
-/// - `F`: The closure type that computes the value. Must implement `Fn() -> T`.
-pub struct Memo<T, F>
-where
-    F: Fn() -> T,
-{
-    f: F,
+pub struct Memo<T> {
+    f: Box<dyn Fn() -> T>,
     dependents: RefCell<Vec<&'static dyn Observable>>,
 }
 
-impl<T, F> Observable for Memo<T, F>
-where
-    F: Fn() -> T,
-{
+impl<T> Observable for Memo<T> {
     fn invalidate(&'static self) {
         remove_from_cache(self);
         self.dependents.borrow().iter().for_each(|d| d.invalidate());
     }
 }
 
-impl<T, F> Memo<T, F>
-where
-    F: Fn() -> T,
-{
+impl<T> Memo<T> {
     /// Creates a new `Memo` wrapping the provided closure.
     ///
     /// # Examples
@@ -47,9 +37,9 @@ where
     ///
     /// let memo = Memo::new(|| 10);
     /// ```
-    pub fn new(f: F) -> Self {
+    pub fn new(f: impl Fn() -> T + 'static) -> Self {
         Memo {
-            f,
+            f: Box::new(f),
             dependents: vec![].into(),
         }
     }
@@ -64,7 +54,7 @@ where
     /// use once_cell::unsync::Lazy;
     /// use reactive_cache::Memo;
     ///
-    /// static mut MEMO: Lazy<Memo<i32, fn() -> i32>> = Lazy::new(|| Memo::new(|| 5));
+    /// static mut MEMO: Lazy<Memo<i32>> = Lazy::new(|| Memo::new(|| 5));
     /// assert_eq!(unsafe { (*MEMO).get() }, 5);
     /// ```
     pub fn get(&'static self) -> T
