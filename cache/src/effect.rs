@@ -15,6 +15,65 @@ use crate::effect_stack::{effect_peak, effect_pop, effect_push};
 /// - Like a callback: wraps a closure and runs it.
 /// - Adds tracking: automatically re-runs when dependent signals change.
 /// - Runs once immediately at creation.
+///
+/// # Examples
+///
+/// ## Basic usage
+/// ```
+/// use std::{cell::Cell, rc::Rc};
+/// use reactive_cache::Effect;
+///
+/// let counter = Rc::new(Cell::new(0));
+/// let c_clone = counter.clone();
+///
+/// let effect = Effect::new(move || {
+///     // This closure runs immediately
+///     c_clone.set(c_clone.get() + 1);
+/// });
+///
+/// assert_eq!(counter.get(), 1);
+/// ```
+///
+/// ## Using inside a struct
+/// ```
+/// use std::{rc::Rc, cell::Cell};
+/// use reactive_cache::{Signal, Memo, Effect};
+///
+/// struct ViewModel {
+///     counter: Rc<Signal<i32>>,
+///     double: Rc<Memo<i32>>,
+///     effect: Rc<Effect>,
+///     run_count: Rc<Cell<u32>>,
+/// }
+///
+/// let counter = Rc::new(Signal::new(Some(1)));
+/// let double = Memo::new({
+///     let counter = counter.clone();
+///     move || *counter.get() * 2
+/// });
+///
+/// let run_count = Rc::new(Cell::new(0));
+/// let run_count_clone = run_count.clone();
+///
+/// let effect = Effect::new({
+///     let double = double.clone();
+///     move || {
+///         run_count_clone.set(run_count_clone.get() + 1);
+///         let _ = double.get();
+///     }
+/// });
+///
+/// let vm = ViewModel {
+///     counter: counter.clone(),
+///     double: double.clone(),
+///     effect: effect,
+///     run_count: run_count.clone(),
+/// };
+///
+/// assert_eq!(run_count.get(), 1);
+/// vm.counter.set(4);
+/// assert_eq!(run_count.get(), 2);
+/// ```
 pub struct Effect {
     f: Box<dyn Fn()>,
 }
@@ -28,6 +87,7 @@ impl Effect {
     ///
     /// # Examples
     ///
+    /// ## Basic usage
     /// ```
     /// use std::{cell::Cell, rc::Rc};
     /// use reactive_cache::Effect;
@@ -41,6 +101,36 @@ impl Effect {
     /// });
     ///
     /// assert_eq!(counter.get(), 1);
+    /// ```
+    ///
+    /// ## Using inside a struct
+    /// ```
+    /// use std::rc::Rc;
+    /// use reactive_cache::{Signal, Memo, Effect};
+    ///
+    /// struct ViewModel {
+    ///     counter: Rc<Signal<i32>>,
+    ///     double: Rc<Memo<i32>>,
+    ///     effect: Rc<Effect>,
+    /// }
+    ///
+    /// let counter = Rc::new(Signal::new(Some(1)));
+    /// let double = Memo::new({
+    ///     let counter = counter.clone();
+    ///     move || *counter.get() * 2
+    /// });
+    ///
+    /// let vm = ViewModel {
+    ///     counter: counter.clone(),
+    ///     double: double.clone(),
+    ///     effect: Effect::new({
+    ///         let double = double.clone();
+    ///         move || println!("Double is {}", double.get())
+    ///     }),
+    /// };
+    ///
+    /// counter.set(3);
+    /// assert_eq!(double.get(), 6);
     /// ```
     #[allow(clippy::new_ret_no_self)]
     pub fn new(f: impl Fn() + 'static) -> Rc<Effect> {

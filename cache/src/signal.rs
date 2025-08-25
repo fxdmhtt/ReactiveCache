@@ -20,6 +20,39 @@ use crate::{Effect, IMemo, IObservable, effect_stack::EffectStackEntry};
 /// # Type Parameters
 ///
 /// - `T`: The type of the value stored in the signal. Must implement `Eq + Default`.
+///
+/// # Examples
+///
+/// ## Basic usage
+/// ```
+/// use std::rc::Rc;
+/// use std::cell::Cell;
+/// use reactive_cache::Signal;
+///
+/// let signal = Signal::new(Some(10));
+/// assert_eq!(*signal.get(), 10);
+///
+/// let default_signal: Signal<i32> = Signal::new(None);
+/// assert_eq!(*default_signal.get(), 0);
+/// ```
+///
+/// ## Using inside a struct
+/// ```
+/// use std::{rc::Rc, cell::Cell};
+/// use reactive_cache::Signal;
+///
+/// struct ViewModel {
+///     counter: Signal<i32>,
+///     sum: Signal<i32>,
+/// }
+///
+/// let counter = Signal::new(Some(5));
+/// let sum = Signal::new(None);
+/// let vm = ViewModel { counter, sum };
+///
+/// assert_eq!(*vm.counter.get(), 5);
+/// assert_eq!(*vm.sum.get(), 0);
+/// ```
 pub struct Signal<T> {
     value: RefCell<T>,
     dependents: RefCell<Vec<Weak<dyn IMemo>>>,
@@ -63,6 +96,7 @@ impl<T> Signal<T> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
     /// ```
     /// use reactive_cache::Signal;
     ///
@@ -71,6 +105,31 @@ impl<T> Signal<T> {
     ///
     /// let default_signal: Signal<i32> = Signal::new(None);
     /// assert_eq!(*default_signal.get(), 0);
+    /// ```
+    ///
+    /// Using inside a struct:
+    /// ```
+    /// use reactive_cache::Signal;
+    ///
+    /// struct ViewModel {
+    ///     counter: Signal<i32>,
+    ///     name: Signal<String>,
+    /// }
+    ///
+    /// let vm = ViewModel {
+    ///     counter: Signal::new(Some(0)),
+    ///     name: Signal::new(Some("Alice".to_string())),
+    /// };
+    ///
+    /// assert_eq!(*vm.counter.get(), 0);
+    /// assert_eq!(*vm.name.get(), "Alice");
+    ///
+    /// // Update values
+    /// assert!(vm.counter.set(1));
+    /// assert!(vm.name.set("Bob".into()));
+    ///
+    /// assert_eq!(*vm.counter.get(), 1);
+    /// assert_eq!(*vm.name.get(), "Bob");
     /// ```
     pub fn new(value: Option<T>) -> Self
     where
