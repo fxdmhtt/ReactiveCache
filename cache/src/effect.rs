@@ -46,7 +46,7 @@ use crate::effect_stack::{effect_peak, effect_pop, effect_push};
 ///     run_count: Rc<Cell<u32>>,
 /// }
 ///
-/// let counter = Rc::new(Signal::new(Some(1)));
+/// let counter = Signal::new(1);
 /// let double = Memo::new({
 ///     let counter = counter.clone();
 ///     move || *counter.get() * 2
@@ -114,7 +114,7 @@ impl Effect {
     ///     effect: Rc<Effect>,
     /// }
     ///
-    /// let counter = Rc::new(Signal::new(Some(1)));
+    /// let counter = Signal::new(1);
     /// let double = Memo::new({
     ///     let counter = counter.clone();
     ///     move || *counter.get() * 2

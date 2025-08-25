@@ -1,6 +1,6 @@
 use std::{
     cell::{Ref, RefCell},
-    rc::Weak,
+    rc::{Rc, Weak},
 };
 
 use crate::{Effect, IMemo, IObservable, effect_stack::EffectStackEntry};
@@ -19,39 +19,45 @@ use crate::{Effect, IMemo, IObservable, effect_stack::EffectStackEntry};
 ///
 /// # Type Parameters
 ///
-/// - `T`: The type of the value stored in the signal. Must implement `Eq + Default`.
+/// - `T`: The type of the value stored in the signal. Must implement `Eq`.
 ///
 /// # Examples
 ///
 /// ## Basic usage
 /// ```
 /// use std::rc::Rc;
-/// use std::cell::Cell;
 /// use reactive_cache::Signal;
 ///
-/// let signal = Signal::new(Some(10));
+/// let signal = Signal::new(10);
 /// assert_eq!(*signal.get(), 10);
 ///
-/// let default_signal: Signal<i32> = Signal::new(None);
-/// assert_eq!(*default_signal.get(), 0);
+/// signal.set(20);
+/// assert_eq!(*signal.get(), 20);
 /// ```
 ///
 /// ## Using inside a struct
 /// ```
-/// use std::{rc::Rc, cell::Cell};
+/// use std::rc::Rc;
 /// use reactive_cache::Signal;
 ///
 /// struct ViewModel {
-///     counter: Signal<i32>,
-///     sum: Signal<i32>,
+///     counter: Rc<Signal<i32>>,
+///     name: Rc<Signal<String>>,
 /// }
 ///
-/// let counter = Signal::new(Some(5));
-/// let sum = Signal::new(None);
-/// let vm = ViewModel { counter, sum };
+/// let vm = ViewModel {
+///     counter: Signal::new(0).into(),
+///     name: Signal::new("Alice".to_string()).into(),
+/// };
 ///
-/// assert_eq!(*vm.counter.get(), 5);
-/// assert_eq!(*vm.sum.get(), 0);
+/// assert_eq!(*vm.counter.get(), 0);
+/// assert_eq!(*vm.name.get(), "Alice");
+///
+/// vm.counter.set(1);
+/// vm.name.set("Bob".into());
+///
+/// assert_eq!(*vm.counter.get(), 1);
+/// assert_eq!(*vm.name.get(), "Bob");
 /// ```
 pub struct Signal<T> {
     value: RefCell<T>,
@@ -92,33 +98,30 @@ impl<T> Signal<T> {
 
     /// Creates a new `Signal` with the given initial value.
     ///
-    /// If `None` is provided, `T::default()` is used.
-    ///
     /// # Examples
     ///
     /// Basic usage:
     /// ```
+    /// use std::rc::Rc;
     /// use reactive_cache::Signal;
     ///
-    /// let signal = Signal::new(Some(10));
+    /// let signal = Signal::new(10);
     /// assert_eq!(*signal.get(), 10);
-    ///
-    /// let default_signal: Signal<i32> = Signal::new(None);
-    /// assert_eq!(*default_signal.get(), 0);
     /// ```
     ///
     /// Using inside a struct:
     /// ```
+    /// use std::rc::Rc;
     /// use reactive_cache::Signal;
     ///
     /// struct ViewModel {
-    ///     counter: Signal<i32>,
-    ///     name: Signal<String>,
+    ///     counter: Rc<Signal<i32>>,
+    ///     name: Rc<Signal<String>>,
     /// }
     ///
     /// let vm = ViewModel {
-    ///     counter: Signal::new(Some(0)),
-    ///     name: Signal::new(Some("Alice".to_string())),
+    ///     counter: Signal::new(0),
+    ///     name: Signal::new("Alice".to_string()),
     /// };
     ///
     /// assert_eq!(*vm.counter.get(), 0);
@@ -131,15 +134,14 @@ impl<T> Signal<T> {
     /// assert_eq!(*vm.counter.get(), 1);
     /// assert_eq!(*vm.name.get(), "Bob");
     /// ```
-    pub fn new(value: Option<T>) -> Self
-    where
-        T: Default,
+    pub fn new(value: T) -> Rc<Self>
     {
         Signal {
-            value: value.unwrap_or_default().into(),
+            value: value.into(),
             dependents: vec![].into(),
             effects: vec![].into(),
         }
+        .into()
     }
 
     /// Gets a reference to the current value, tracking dependencies
@@ -150,7 +152,7 @@ impl<T> Signal<T> {
     /// ```
     /// use reactive_cache::Signal;
     ///
-    /// let signal = Signal::new(Some(42));
+    /// let signal = Signal::new(42);
     /// assert_eq!(*signal.get(), 42);
     /// ```
     pub fn get(&self) -> Ref<'_, T> {
@@ -180,7 +182,7 @@ impl<T> Signal<T> {
     /// ```
     /// use reactive_cache::Signal;
     ///
-    /// let signal = Signal::new(Some(5));
+    /// let signal = Signal::new(5);
     /// assert_eq!(signal.set(10), true);
     /// assert_eq!(*signal.get(), 10);
     ///

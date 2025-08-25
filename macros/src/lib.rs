@@ -16,7 +16,7 @@ use syn::{Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
 /// # Requirements
 ///
 /// - The macro currently supports only `static mut` variables.
-/// - The variable type must implement `Eq + Default`.
+/// - The variable type must implement `Eq`.
 ///
 /// # Examples
 ///
@@ -79,8 +79,8 @@ pub fn ref_signal(input: TokenStream) -> TokenStream {
     let ident_get = format_ident!("{}_get", ident);
     let ident_set = format_ident!("{}_set", ident);
 
-    let lazy_ty = quote! { reactive_cache::Lazy<reactive_cache::Signal<#ty>> };
-    let expr = quote! { reactive_cache::Lazy::new(|| reactive_cache::Signal::new(Some(#expr))) };
+    let lazy_ty = quote! { reactive_cache::Lazy<std::rc::Rc<reactive_cache::Signal<#ty>>> };
+    let expr = quote! { reactive_cache::Lazy::new(|| reactive_cache::Signal::new(#expr)) };
 
     let expanded = quote! {
         #(#attrs)*
@@ -114,7 +114,7 @@ pub fn ref_signal(input: TokenStream) -> TokenStream {
 /// # Requirements
 ///
 /// - The macro currently supports only `static mut` variables.
-/// - The variable type must implement `Eq + Default`.
+/// - The variable type must implement `Eq`.
 ///
 /// # Examples
 ///

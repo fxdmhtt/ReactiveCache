@@ -26,7 +26,7 @@ use crate::{IObservable, memo_stack, store_in_cache, touch};
 /// use std::rc::Rc;
 /// use reactive_cache::{Signal, Memo};
 ///
-/// let counter = Rc::new(Signal::new(Some(1)));
+/// let counter = Signal::new(1);
 /// let double = {
 ///     let counter = Rc::clone(&counter);
 ///     Memo::new({
@@ -50,7 +50,7 @@ use crate::{IObservable, memo_stack, store_in_cache, touch};
 ///     double: Rc<Memo<i32>>,
 /// }
 ///
-/// let counter = Rc::new(Signal::new(Some(1)));
+/// let counter = Signal::new(1);
 /// let double = Memo::new({
 ///     let counter = counter.clone();
 ///     move || *counter.get() * 2
@@ -99,8 +99,8 @@ impl<T> Memo<T> {
     /// }
     ///
     /// // Construct signals
-    /// let a = Rc::new(Signal::new(Some(2)));
-    /// let b = Rc::new(Signal::new(Some(3)));
+    /// let a = Signal::new(2);
+    /// let b = Signal::new(3);
     ///
     /// // Construct a memo depending on `a` and `b`
     /// let sum = {
