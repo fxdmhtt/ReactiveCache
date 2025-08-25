@@ -241,7 +241,7 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 
     let ident = format_ident!("{}", ident.to_string().to_uppercase());
-    let ty = quote! { reactive_cache::Lazy<reactive_cache::Memo<#output_ty>> };
+    let ty = quote! { reactive_cache::Lazy<std::rc::Rc<reactive_cache::Memo<#output_ty>>> };
     let expr = quote! { reactive_cache::Lazy::new(|| reactive_cache::Memo::new(|| #block)) };
 
     let expanded = quote! {

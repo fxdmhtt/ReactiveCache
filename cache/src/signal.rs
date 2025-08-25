@@ -3,7 +3,7 @@ use std::{
     rc::Weak,
 };
 
-use crate::{Effect, Observable, call_stack, effect_stack::EffectStackEntry};
+use crate::{Effect, IMemo, IObservable, effect_stack::EffectStackEntry};
 
 /// A reactive signal that holds a value, tracks dependencies, and triggers effects.
 ///
@@ -22,17 +22,15 @@ use crate::{Effect, Observable, call_stack, effect_stack::EffectStackEntry};
 /// - `T`: The type of the value stored in the signal. Must implement `Eq + Default`.
 pub struct Signal<T> {
     value: RefCell<T>,
-    dependents: RefCell<Vec<&'static dyn Observable>>,
+    dependents: RefCell<Vec<Weak<dyn IMemo>>>,
     effects: RefCell<Vec<Weak<Effect>>>,
 }
 
 impl<T> Signal<T> {
-    /// Invalidates all dependent observables.
-    fn invalidate(&self) {
-        self.dependents.borrow().iter().for_each(|d| d.invalidate());
-    }
-
-    /// Runs all dependent effects.
+    /// Re-runs all dependent effects that are still alive.
+    ///
+    /// This is triggered after the signal's value has changed.  
+    /// Dead effects (already dropped) are cleaned up automatically.
     fn flush_effects(&self) {
         // When triggering an Effect, dependencies are not collected for that Effect.
         self.effects.borrow_mut().retain(|w| {
@@ -45,11 +43,15 @@ impl<T> Signal<T> {
         });
     }
 
+    /// Called after the value is updated.  
+    /// Triggers all dependent effects.
     #[allow(non_snake_case)]
     fn OnPropertyChanged(&self) {
         self.flush_effects()
     }
 
+    /// Called before the value is updated.  
+    /// Invalidates all memoized computations depending on this signal.
     #[allow(non_snake_case)]
     fn OnPropertyChanging(&self) {
         self.invalidate()
@@ -81,7 +83,8 @@ impl<T> Signal<T> {
         }
     }
 
-    /// Gets a reference to the current value, tracking dependencies and effects if inside a reactive context.
+    /// Gets a reference to the current value, tracking dependencies
+    /// and effects if inside a reactive context.
     ///
     /// # Examples
     ///
@@ -92,16 +95,7 @@ impl<T> Signal<T> {
     /// assert_eq!(*signal.get(), 42);
     /// ```
     pub fn get(&self) -> Ref<'_, T> {
-        // Track observables in the call stack
-        if let Some(last) = call_stack::last()
-            && !self
-                .dependents
-                .borrow()
-                .iter()
-                .any(|d| std::ptr::eq(*d, *last))
-        {
-            self.dependents.borrow_mut().push(*last);
-        }
+        self.dependency_collection();
 
         // Track effects in the call stack
         if let Some(EffectStackEntry {
@@ -119,7 +113,8 @@ impl<T> Signal<T> {
 
     /// Sets the value of the signal.
     ///
-    /// Returns `true` if the value changed and dependent effects were triggered.
+    /// Returns `true` if the value changed, all dependent memos are
+    /// invalidated and dependent effects were triggered.
     ///
     /// # Examples
     ///
@@ -148,5 +143,11 @@ impl<T> Signal<T> {
         self.OnPropertyChanged();
 
         true
+    }
+}
+
+impl<T> IObservable for Signal<T> {
+    fn dependents(&self) -> &RefCell<Vec<Weak<dyn IMemo>>> {
+        &self.dependents
     }
 }
