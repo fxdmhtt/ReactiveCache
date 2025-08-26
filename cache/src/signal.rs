@@ -21,6 +21,14 @@ use crate::{Effect, IMemo, IObservable, effect_stack::EffectStackEntry};
 ///
 /// - `T`: The type of the value stored in the signal. Must implement `Eq`.
 ///
+/// # Memory Management Note
+///
+/// When referencing `Signal` instances that belong to other struct instances
+/// (for example, when one `ViewModel` holds references to signals in another `ViewModel`),
+/// you **must** store them as `Weak<Signal<T>>` obtained via `Rc::downgrade` instead of
+/// cloning a strong `Rc`. Failing to do so can create reference cycles between the structs
+/// and their dependent effects, preventing proper cleanup and causing memory leaks.
+///
 /// # Examples
 ///
 /// ## Basic usage
@@ -60,8 +68,15 @@ use crate::{Effect, IMemo, IObservable, effect_stack::EffectStackEntry};
 /// assert_eq!(*vm.name.get(), "Bob");
 /// ```
 pub struct Signal<T> {
+    /// Current value of the signal.
     value: RefCell<T>,
+
+    /// Memoized computations that depend on this signal.
+    /// Weak references are used to avoid memory leaks.
     dependents: RefCell<Vec<Weak<dyn IMemo>>>,
+
+    /// Effects that depend on this signal.
+    /// Weak references prevent retaining dropped effects.
     effects: RefCell<Vec<Weak<Effect>>>,
 }
 

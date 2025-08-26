@@ -18,6 +18,14 @@ use crate::{IObservable, memo_stack, store_in_cache, touch};
 /// # Type Parameters
 ///
 /// - `T`: The result type of the computation. Must implement `Clone`.
+/// 
+/// # Memory Management Note
+///
+/// When referencing `Memo` instances that belong to other struct instances
+/// (for example, when one `ViewModel` holds references to memos in another `ViewModel`),
+/// you **must** store them as `Weak<Memo<T>>` obtained via `Rc::downgrade` instead of
+/// cloning a strong `Rc`. Failing to do so can create reference cycles between the structs
+/// and their dependent effects, preventing proper cleanup and causing memory leaks.
 ///
 /// # Examples
 ///
