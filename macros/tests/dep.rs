@@ -2,7 +2,7 @@
 
 use std::cell::Cell;
 
-use reactive_macros::{memo, ref_signal, signal};
+use reactive_macros::{memo, signal};
 
 thread_local! {
     static SOURCE_A_CALLED: Cell<bool> = const { Cell::new(false) };
@@ -16,20 +16,20 @@ signal!(
     static mut A: i32 = 10;
 );
 
-ref_signal!(
+signal!(
     static mut B: String = 5.to_string();
 );
 
 pub fn source_a() -> i32 {
     SOURCE_A_CALLED.set(true);
 
-    A()
+    *A().get()
 }
 
 pub fn source_b() -> i32 {
     SOURCE_B_CALLED.set(true);
 
-    B_get().parse::<i32>().unwrap()
+    B().get().parse::<i32>().unwrap()
 }
 
 #[memo]
@@ -137,7 +137,7 @@ fn signal_set_unchanged_test() {
     DERIVED_D_CALLED.set(false);
     DERIVED_E_CALLED.set(false);
 
-    A_set(10);
+    A().set(10);
 
     assert!(!SOURCE_A_CALLED.get());
     assert!(!SOURCE_B_CALLED.get());
@@ -182,8 +182,8 @@ fn signal_set_value_test() {
     DERIVED_D_CALLED.set(false);
     DERIVED_E_CALLED.set(false);
 
-    A_set(20);
-    A_set(10);
+    A().set(20);
+    A().set(10);
 
     assert!(!SOURCE_A_CALLED.get());
     assert!(!SOURCE_B_CALLED.get());

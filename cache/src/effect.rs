@@ -166,7 +166,7 @@ impl Effect {
     /// ```
     /// use std::{cell::Cell, rc::Rc};
     /// use reactive_cache::Effect;
-    /// use reactive_macros::{ref_signal, signal};
+    /// use reactive_macros::signal;
     ///
     /// signal!(static mut FLAG: bool = true;);
     /// signal!(static mut COUNTER: i32 = 10;);
@@ -177,29 +177,29 @@ impl Effect {
     /// // Effect closure has a conditional branch
     /// let effect = Effect::new_with_deps(
     ///     move || {
-    ///         match *FLAG_get() {
+    ///         match *FLAG().get() {
     ///             true => {}
     ///             false => {
-    ///                 r_clone.set(*COUNTER_get());
+    ///                 r_clone.set(*COUNTER().get());
     ///             }
     ///         }
     ///     },
     ///     // Explicitly declare both `FLAG` and `COUNTER` as dependencies
     ///     move || {
-    ///         FLAG();
-    ///         COUNTER();
+    ///         FLAG().get();
+    ///         COUNTER().get();
     ///     },
     /// );
     ///
     /// assert_eq!(result.get(), 0); // runs with FLAG = true
     ///
     /// // Changing `FLAG` to false will trigger the effect
-    /// FLAG_set(false);
+    /// FLAG().set(false);
     /// assert_eq!(result.get(), 10);
     ///
     /// // Changing `COUNTER` still triggers the effect, even though
     /// // `FLAG` was true on the first run.
-    /// COUNTER_set(20);
+    /// COUNTER().set(20);
     /// assert_eq!(result.get(), 20);
     /// ```
     pub fn new_with_deps(f: impl Fn() + 'static, deps: impl Fn()) -> Rc<Effect> {

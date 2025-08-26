@@ -3,7 +3,7 @@
 use std::{cell::Cell, rc::Rc};
 
 use reactive_cache::effect;
-use reactive_macros::{memo, ref_signal, signal};
+use reactive_macros::{memo, signal};
 
 static mut SOURCE_A_CALLED: i32 = 0;
 static mut SOURCE_B_CALLED: i32 = 0;
@@ -16,20 +16,20 @@ signal!(
     static mut A: i32 = 10;
 );
 
-ref_signal!(
+signal!(
     static mut B: String = 5.to_string();
 );
 
 pub fn source_a() -> i32 {
     unsafe { SOURCE_A_CALLED += 1 };
 
-    A()
+    *A().get()
 }
 
 pub fn source_b() -> i32 {
     unsafe { SOURCE_B_CALLED += 1 };
 
-    B_get().parse::<i32>().unwrap()
+    B().get().parse::<i32>().unwrap()
 }
 
 #[memo]
@@ -66,7 +66,7 @@ pub fn effect_f() {
 
 #[test]
 fn complex_dependency_effect_test() {
-    A_set(0);
+    A().set(0);
     effect!(effect_e);
     effect!(|| { effect_f() });
 
@@ -77,7 +77,7 @@ fn complex_dependency_effect_test() {
     unsafe { EFFECT_E_CALLED = 0 };
     unsafe { EFFECT_F_CALLED = 0 };
 
-    A_set(10);
+    A().set(10);
 
     assert_eq!(unsafe { SOURCE_A_CALLED }, 0);
     assert_eq!(unsafe { SOURCE_B_CALLED }, 0);
@@ -86,7 +86,7 @@ fn complex_dependency_effect_test() {
     assert_eq!(unsafe { EFFECT_E_CALLED }, 0);
     assert_eq!(unsafe { EFFECT_F_CALLED }, 0);
 
-    A_set(0);
+    A().set(0);
     let _ = Rc::into_raw(effect!(effect_e));
 
     unsafe { SOURCE_A_CALLED = 0 };
@@ -96,7 +96,7 @@ fn complex_dependency_effect_test() {
     unsafe { EFFECT_E_CALLED = 0 };
     unsafe { EFFECT_F_CALLED = 0 };
 
-    A_set(10);
+    A().set(10);
 
     assert_eq!(unsafe { SOURCE_A_CALLED }, 1);
     assert_eq!(unsafe { SOURCE_B_CALLED }, 1);
@@ -105,7 +105,7 @@ fn complex_dependency_effect_test() {
     assert_eq!(unsafe { EFFECT_E_CALLED }, 1);
     assert_eq!(unsafe { EFFECT_F_CALLED }, 0);
 
-    A_set(0);
+    A().set(0);
     let _ = Rc::into_raw(effect!(|| { effect_f() }));
 
     unsafe { SOURCE_A_CALLED = 0 };
@@ -115,7 +115,7 @@ fn complex_dependency_effect_test() {
     unsafe { EFFECT_E_CALLED = 0 };
     unsafe { EFFECT_F_CALLED = 0 };
 
-    A_set(10);
+    A().set(10);
 
     assert_eq!(unsafe { SOURCE_A_CALLED }, 1);
     assert_eq!(unsafe { SOURCE_B_CALLED }, 1);
@@ -132,11 +132,11 @@ signal!(
 #[test]
 fn loop_effect_test() {
     let _ = Rc::into_raw(effect!(|| {
-        LOOP_A();
+        LOOP_A().get();
     }));
 
     let _ = Rc::into_raw(effect!(|| {
-        LOOP_A_set(20);
+        LOOP_A().set(20);
     }));
 }
 
@@ -155,24 +155,24 @@ fn switch_effect_test() {
     let b_rst_clone = b_rst.clone();
     let _ = Rc::into_raw(effect!(
         move || {
-            match SWITCH_A() {
+            match *SWITCH_A().get() {
                 true => {}
                 false => {
-                    b_rst_clone.set(*SWITCH_B_get());
+                    b_rst_clone.set(*SWITCH_B().get());
                 }
             }
         },
         || {
-            SWITCH_A();
-            SWITCH_B();
+            SWITCH_A().get();
+            SWITCH_B().get();
         }
     ));
 
     assert_eq!(b_rst.get(), 0);
 
-    SWITCH_A_set(false);
+    SWITCH_A().set(false);
     assert_eq!(b_rst.get(), 10);
 
-    SWITCH_B_set(20);
+    SWITCH_B().set(20);
     assert_eq!(b_rst.get(), 20); // SWITCH_B is reactive because it is included in the deps closure of `effect!`
 }

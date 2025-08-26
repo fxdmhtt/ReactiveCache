@@ -2,132 +2,34 @@ use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
 
-/// Wraps a `static mut` variable as a reactive signal (similar to a property)
-/// with getter and setter functions.
-///
-/// The `ref_signal!` macro transforms a `static mut` variable into a `reactive_cache::Signal`,
-/// and automatically generates:
-/// 1. A `_get()` function that returns a reference to the value, allowing read access.
-///    - This reference behaves like a normal immutable reference for most purposes.
-/// 2. A `_set(value)` function to write the value (returns `true` if changed).
-///
-/// Unlike `signal!`, `ref_signal!` does **not** generate a same-named function that directly returns the value.
-///
-/// # Requirements
-///
-/// - The macro currently supports only `static mut` variables.
-/// - The variable type must implement `Eq`.
-///
-/// # Examples
-///
-/// ```rust
-/// use reactive_macros::ref_signal;
-///
-/// ref_signal!(static mut A: String = "hello".to_string(););
-///
-/// assert_eq!(&*A_get(), "hello");
-/// assert!(A_set("signal".to_string()));
-/// assert_eq!(&*A_get(), "signal");
-/// assert!(!A_set("signal".to_string())); // No change
-/// ```
-///
-/// # SAFETY
-///
-/// This macro wraps `static mut` variables internally, so it **is not thread-safe**.
-/// It should be used only in single-threaded contexts.
-///
-/// # Warning
-///
-/// **Do not set any signal that is part of the same effect chain.**
-///
-/// Effects automatically run whenever one of their dependent signals changes.
-/// If an effect modifies a signal that it (directly or indirectly) observes,
-/// it creates a circular dependency. This can lead to:
-/// - an infinite loop of updates, or
-/// - conflicting updates that the system cannot resolve.
-///
-/// In the general case, it is impossible to automatically determine whether
-/// such an effect will ever terminate—this is essentially a version of the
-/// halting problem. Therefore, you must ensure manually that effects do not
-/// update signals within their own dependency chain.
-#[proc_macro]
-pub fn ref_signal(input: TokenStream) -> TokenStream {
-    let item = parse_macro_input!(input as ItemStatic);
-
-    let attrs = &item.attrs;
-    let vis = &item.vis;
-    let static_token = &item.static_token;
-    let _mutability = &item.mutability;
-    let ident = &item.ident;
-    let colon_token = &item.colon_token;
-    let ty = &item.ty;
-    let eq_token = &item.eq_token;
-    let expr = &item.expr;
-    let semi_token = &item.semi_token;
-
-    let mutability = match &item.mutability {
-        syn::StaticMutability::Mut(_) => quote! { mut },
-        syn::StaticMutability::None => quote! {},
-        _ => {
-            return syn::Error::new_spanned(&item.mutability, "Mutability not supported")
-                .to_compile_error()
-                .into();
-        }
-    };
-
-    let ident_p = format_ident!("_{}", ident.to_string().to_uppercase());
-    let ident_get = format_ident!("{}_get", ident);
-    let ident_set = format_ident!("{}_set", ident);
-
-    let lazy_ty = quote! { reactive_cache::Lazy<std::rc::Rc<reactive_cache::Signal<#ty>>> };
-    let expr = quote! { reactive_cache::Lazy::new(|| reactive_cache::Signal::new(#expr)) };
-
-    let expanded = quote! {
-        #(#attrs)*
-        #vis #static_token #mutability #ident_p #colon_token #lazy_ty #eq_token #expr #semi_token
-
-        #[allow(non_snake_case)]
-        pub fn #ident_get() -> std::cell::Ref<'static, #ty> {
-            unsafe { #ident_p.get() }
-        }
-
-        #[allow(non_snake_case)]
-        pub fn #ident_set(value: #ty) -> bool {
-            unsafe { #ident_p.set(value) }
-        }
-    };
-
-    expanded.into()
-}
-
-/// Wraps a `static mut` variable as a reactive signal (similar to a property)
-/// with getter and setter functions.
+/// Wraps a `static mut` variable as a reactive global signal.
 ///
 /// The `signal!` macro transforms a `static mut` variable into a `reactive_cache::Signal`,
-/// and automatically generates:
-/// 1. A `_get()` function that returns a reference to the value, allowing read access.
-///    - This reference behaves like a normal immutable reference for most purposes.
-/// 2. A `_set(value)` function to write the value (returns `true` if changed).
-/// 3. A function with the same name as the variable that directly returns the value
-///    by dereferencing the underlying variable. This requires the type to implement `Copy`.
+/// and generates a **function with the same name as the variable** that returns a
+/// `&'static Rc<Signal<T>>`. You can then call `.get()` to read the value or `.set(value)` to update it.
 ///
 /// # Requirements
 ///
-/// - The macro currently supports only `static mut` variables.
-/// - The variable type must implement `Eq`.
+/// - Supports only `static mut` variables.
+/// - Type `T` must implement `Eq`.
 ///
 /// # Examples
 ///
 /// ```rust
-/// use reactive_macros::{ref_signal, signal};
+/// use reactive_macros::signal;
 ///
 /// signal!(static mut A: i32 = 10;);
 ///
-/// assert_eq!(A(), 10);          // returns value directly (requires Copy)
-/// assert_eq!(*A_get(), 10);     // returns a reference to the value
-/// assert!(A_set(20));
-/// assert_eq!(A(), 20);
-/// assert!(!A_set(20)); // No change
+/// assert_eq!(*A().get(), 10);
+/// assert!(A().set(20));
+/// assert_eq!(*A().get(), 20);
+/// assert!(!A().set(20)); // No change
+///
+/// signal!(static mut B: String = "hello".to_string(););
+///
+/// assert_eq!(*B().get(), "hello");
+/// assert!(B().set("world".to_string()));
+/// assert_eq!(*B().get(), "world");
 /// ```
 ///
 /// # SAFETY
@@ -151,21 +53,21 @@ pub fn ref_signal(input: TokenStream) -> TokenStream {
 /// update signals within their own dependency chain.
 #[proc_macro]
 pub fn signal(input: TokenStream) -> TokenStream {
-    let input_clone: proc_macro2::TokenStream = input.clone().into();
-
     let item = parse_macro_input!(input as ItemStatic);
+
+    let vis = &item.vis;
     let ident = &item.ident;
     let ty = &item.ty;
+    let expr = &item.expr;
 
-    let ident_p = format_ident!("_{}", ident.to_string().to_uppercase());
-    let ident_fn = format_ident!("{}", ident);
+    let lazy_ty = quote! { reactive_cache::Lazy<std::rc::Rc<reactive_cache::Signal<#ty>>> };
+    let expr = quote! { reactive_cache::Lazy::new(|| reactive_cache::Signal::new(#expr)) };
 
     let expanded = quote! {
-        ref_signal!(#input_clone);
-
         #[allow(non_snake_case)]
-        pub fn #ident_fn() -> #ty {
-            *unsafe { #ident_p.get() }
+        #vis fn #ident() -> &'static std::rc::Rc<reactive_cache::Signal<#ty>> {
+            static mut #ident: #lazy_ty = #expr;
+            unsafe { &*#ident }
         }
     };
 
@@ -252,12 +154,9 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let expr = quote! { reactive_cache::Lazy::new(|| reactive_cache::Memo::new(|| #block)) };
 
     let expanded = quote! {
-        static mut #ident: #ty = #expr;
-
-        #vis #sig
-        where #output_ty: Clone
-        {
-            unsafe { (*#ident).get() }
+        #vis #sig {
+            static mut #ident: #ty = #expr;
+            unsafe { #ident.get() }
         }
     };
 
@@ -281,7 +180,7 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// # Examples
 ///
 /// ```rust
-/// use reactive_macros::{evaluate, ref_signal};
+/// use reactive_macros::evaluate;
 ///
 /// fn print(msg: String) {
 ///     println!("{}", msg);

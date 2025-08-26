@@ -4,14 +4,14 @@ use std::{
 };
 
 use reactive_cache::{Effect, Memo, Signal};
-use reactive_macros::{memo, ref_signal, signal};
+use reactive_macros::{memo, signal};
 
 // ----------------------
 // Global signals
 // ----------------------
 
 // Non-Copy global string signal
-ref_signal!(static mut GLOBAL_STR: String = "hello".to_string(););
+signal!(static mut GLOBAL_STR: String = "hello".to_string(););
 
 // Copy global numeric signal
 signal!(static mut GLOBAL_NUM: i32 = 10;);
@@ -23,13 +23,13 @@ signal!(static mut GLOBAL_NUM: i32 = 10;);
 #[memo]
 pub fn get_global_number() -> i32 {
     // Getter for the global numeric signal
-    GLOBAL_NUM()
+    *GLOBAL_NUM().get()
 }
 
 #[memo]
 pub fn get_global_string() -> String {
     // Getter for the global string signal
-    GLOBAL_STR_get().clone()
+    GLOBAL_STR().get().clone()
 }
 
 // ----------------------
@@ -55,7 +55,7 @@ impl ViewModel {
             move || {
                 let base = *counter_clone.get();
                 let global_val = if use_global_num {
-                    GLOBAL_NUM()
+                    *GLOBAL_NUM().get()
                 } else {
                     0
                 };
@@ -145,7 +145,7 @@ fn test_global_and_vm_interaction_with_memory_cleanup() {
 
     // Update global numeric signal -> global effect should re-run
     // vm1's memo depends on global numeric, so its effect should also run
-    GLOBAL_NUM_set(100);
+    GLOBAL_NUM().set(100);
     assert_eq!(global_effect_runs.get(), 2);
     assert_eq!(vm1_effect_runs.get(), 3);
     assert_eq!(vm2_effect_runs.get(), 2); // vm2 does not depend on global
@@ -184,7 +184,7 @@ fn test_global_and_vm_interaction_with_memory_cleanup() {
     let _s = get_global_string();
 
     // Sanity check on global values
-    assert_eq!(GLOBAL_NUM(), 100);
+    assert_eq!(*GLOBAL_NUM().get(), 100);
     assert_eq!(get_global_number(), 100);
     assert_eq!(get_global_string(), "hello".to_string());
 }

@@ -27,7 +27,7 @@
 /// ```rust
 /// use std::{cell::Cell, rc::Rc};
 /// use reactive_cache::effect;
-/// use reactive_macros::{ref_signal, signal};
+/// use reactive_macros::signal;
 ///
 /// signal!(static mut A: i32 = 1;);
 ///
@@ -37,7 +37,7 @@
 ///
 /// // `effect!(f)` form
 /// let e = effect!(move || {
-///     let _ = A();           // reading the signal
+///     let _ = A().get();           // reading the signal
 ///     counter_clone.set(counter_clone.get() + 1); // increment effect counter
 /// });
 ///
@@ -47,11 +47,11 @@
 /// assert_eq!(counter.get(), 1);
 ///
 /// // Changing A triggers the effect again
-/// assert!(A_set(10));
+/// assert!(A().set(10));
 /// assert_eq!(counter.get(), 2);
 ///
 /// // Setting the same value does NOT trigger the effect
-/// assert!(!A_set(10));
+/// assert!(!A().set(10));
 /// assert_eq!(counter.get(), 2);
 ///
 /// // `effect!(f, deps)` form
