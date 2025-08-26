@@ -200,11 +200,18 @@ pub fn signal(input: TokenStream) -> TokenStream {
 ///     42
 /// }
 ///
+/// #[memo]
+/// pub fn get_string() -> String {
+///     "Hello, World!".to_string()
+/// }
+///
 /// fn main() {
 ///     // First call computes and caches the value
 ///     assert_eq!(get_number(), 42);
 ///     // Subsequent calls return the cached value without re-running the block
 ///     assert_eq!(get_number(), 42);
+///
+///     assert_eq!(get_string(), "Hello, World!");
 /// }
 /// ```
 ///
@@ -274,7 +281,7 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// # Examples
 ///
 /// ```rust
-/// use reactive_macros::evaluate;
+/// use reactive_macros::{evaluate, ref_signal};
 ///
 /// fn print(msg: String) {
 ///     println!("{}", msg);
