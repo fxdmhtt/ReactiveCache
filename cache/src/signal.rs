@@ -80,6 +80,16 @@ pub struct Signal<T> {
     effects: RefCell<Vec<Weak<Effect>>>,
 }
 
+impl<T: Default> Default for Signal<T> {
+    fn default() -> Self {
+        Self {
+            value: Default::default(),
+            dependents: Default::default(),
+            effects: Default::default(),
+        }
+    }
+}
+
 impl<T> Signal<T> {
     /// Re-runs all dependent effects that are still alive.
     ///
@@ -149,8 +159,7 @@ impl<T> Signal<T> {
     /// assert_eq!(*vm.counter.get(), 1);
     /// assert_eq!(*vm.name.get(), "Bob");
     /// ```
-    pub fn new(value: T) -> Rc<Self>
-    {
+    pub fn new(value: T) -> Rc<Self> {
         Signal {
             value: value.into(),
             dependents: vec![].into(),
