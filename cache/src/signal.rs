@@ -34,7 +34,7 @@ use crate::{Effect, IMemo, IObservable, effect_stack::EffectStackEntry};
 /// ## Basic usage
 /// ```
 /// use std::rc::Rc;
-/// use reactive_cache::Signal;
+/// use reactive_cache::prelude::*;
 ///
 /// let signal = Signal::new(10);
 /// assert_eq!(*signal.get(), 10);
@@ -46,7 +46,7 @@ use crate::{Effect, IMemo, IObservable, effect_stack::EffectStackEntry};
 /// ## Using inside a struct
 /// ```
 /// use std::rc::Rc;
-/// use reactive_cache::Signal;
+/// use reactive_cache::prelude::*;
 ///
 /// struct ViewModel {
 ///     counter: Rc<Signal<i32>>,
@@ -128,7 +128,7 @@ impl<T> Signal<T> {
     /// Basic usage:
     /// ```
     /// use std::rc::Rc;
-    /// use reactive_cache::Signal;
+    /// use reactive_cache::prelude::*;
     ///
     /// let signal = Signal::new(10);
     /// assert_eq!(*signal.get(), 10);
@@ -137,7 +137,7 @@ impl<T> Signal<T> {
     /// Using inside a struct:
     /// ```
     /// use std::rc::Rc;
-    /// use reactive_cache::Signal;
+    /// use reactive_cache::prelude::*;
     ///
     /// struct ViewModel {
     ///     counter: Rc<Signal<i32>>,
@@ -174,7 +174,7 @@ impl<T> Signal<T> {
     /// # Examples
     ///
     /// ```
-    /// use reactive_cache::Signal;
+    /// use reactive_cache::prelude::*;
     ///
     /// let signal = Signal::new(42);
     /// assert_eq!(*signal.get(), 42);
@@ -195,7 +195,46 @@ impl<T> Signal<T> {
 
         self.value.borrow()
     }
+}
 
+pub trait SignalSetter<T> {
+    fn set(&self, value: T) -> bool;
+}
+
+impl<T> SignalSetter<T> for Signal<T> {
+    /// Sets the value of the signal.
+    ///
+    /// For generic types `T` that do not support comparison, they are treated as
+    /// always changing, so the value is always set and `true` is always returned.
+    /// All dependent memos are invalidated and dependent effects were triggered.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use reactive_cache::prelude::*;
+    ///
+    /// #[derive(Debug)]
+    /// struct Num(i32);
+    ///
+    /// let signal = Signal::new(Num(5));
+    /// assert_eq!(signal.set(Num(10)), true);
+    /// assert_eq!(signal.get().0, 10);
+    ///
+    /// // Setting to the same value always return true and trigger all effects.
+    /// assert_eq!(signal.set(Num(10)), true);
+    /// ```
+    default fn set(&self, value: T) -> bool {
+        self.OnPropertyChanging();
+
+        *self.value.borrow_mut() = value;
+
+        self.OnPropertyChanged();
+
+        true
+    }
+}
+
+impl<T: Eq> SignalSetter<T> for Signal<T> {
     /// Sets the value of the signal.
     ///
     /// Returns `true` if the value changed, all dependent memos are
@@ -204,7 +243,7 @@ impl<T> Signal<T> {
     /// # Examples
     ///
     /// ```
-    /// use reactive_cache::Signal;
+    /// use reactive_cache::prelude::*;
     ///
     /// let signal = Signal::new(5);
     /// assert_eq!(signal.set(10), true);
@@ -213,10 +252,7 @@ impl<T> Signal<T> {
     /// // Setting to the same value returns false
     /// assert_eq!(signal.set(10), false);
     /// ```
-    pub fn set(&self, value: T) -> bool
-    where
-        T: Eq,
-    {
+    fn set(&self, value: T) -> bool {
         if *self.value.borrow() == value {
             return false;
         }

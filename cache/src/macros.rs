@@ -27,6 +27,7 @@
 /// ```rust
 /// use std::{cell::Cell, rc::Rc};
 /// use reactive_cache::effect;
+/// use reactive_cache::prelude::*;
 /// use reactive_macros::signal;
 ///
 /// signal!(static mut A: i32 = 1;);
@@ -83,9 +84,9 @@
 #[macro_export]
 macro_rules! effect {
     ($f:expr) => {
-        reactive_cache::Effect::new($f)
+        $crate::Effect::new($f)
     };
     ($f:expr, $f2:expr) => {
-        reactive_cache::Effect::new_with_deps($f, $f2)
+        $crate::Effect::new_with_deps($f, $f2)
     };
 }

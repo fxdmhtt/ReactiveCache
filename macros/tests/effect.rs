@@ -3,6 +3,7 @@
 use std::{cell::Cell, rc::Rc};
 
 use reactive_cache::effect;
+use reactive_cache::prelude::*;
 use reactive_macros::{memo, signal};
 
 static mut SOURCE_A_CALLED: i32 = 0;

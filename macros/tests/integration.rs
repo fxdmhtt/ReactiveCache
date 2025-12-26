@@ -3,7 +3,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use reactive_cache::{Effect, Memo, Signal};
+use reactive_cache::prelude::*;
 use reactive_macros::{memo, signal};
 
 // ----------------------

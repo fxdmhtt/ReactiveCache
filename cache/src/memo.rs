@@ -32,7 +32,7 @@ use crate::{IObservable, memo_stack, store_in_cache, touch};
 /// ## Basic usage
 /// ```
 /// use std::rc::Rc;
-/// use reactive_cache::{Signal, Memo};
+/// use reactive_cache::prelude::*;
 ///
 /// let counter = Signal::new(1);
 /// let double = {
@@ -51,7 +51,7 @@ use crate::{IObservable, memo_stack, store_in_cache, touch};
 /// ## Using inside a struct
 /// ```
 /// use std::rc::Rc;
-/// use reactive_cache::{Signal, Memo};
+/// use reactive_cache::prelude::*;
 ///
 /// struct ViewModel {
 ///     counter: Rc<Signal<i32>>,
@@ -98,7 +98,7 @@ impl<T> Memo<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// use reactive_cache::{Signal, Memo};
+    /// use reactive_cache::prelude::*;
     ///
     /// struct ViewModel {
     ///     a: Rc<Signal<i32>>,

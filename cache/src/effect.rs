@@ -21,7 +21,7 @@ use crate::effect_stack::{effect_peak, effect_pop, effect_push};
 /// ## Basic usage
 /// ```
 /// use std::{cell::Cell, rc::Rc};
-/// use reactive_cache::Effect;
+/// use reactive_cache::prelude::*;
 ///
 /// let counter = Rc::new(Cell::new(0));
 /// let c_clone = counter.clone();
@@ -37,7 +37,7 @@ use crate::effect_stack::{effect_peak, effect_pop, effect_push};
 /// ## Using inside a struct
 /// ```
 /// use std::{rc::Rc, cell::Cell};
-/// use reactive_cache::{Signal, Memo, Effect};
+/// use reactive_cache::prelude::*;
 ///
 /// struct ViewModel {
 ///     counter: Rc<Signal<i32>>,
@@ -90,7 +90,7 @@ impl Effect {
     /// ## Basic usage
     /// ```
     /// use std::{cell::Cell, rc::Rc};
-    /// use reactive_cache::Effect;
+    /// use reactive_cache::prelude::*;
     ///
     /// let counter = Rc::new(Cell::new(0));
     /// let c_clone = counter.clone();
@@ -106,7 +106,7 @@ impl Effect {
     /// ## Using inside a struct
     /// ```
     /// use std::rc::Rc;
-    /// use reactive_cache::{Signal, Memo, Effect};
+    /// use reactive_cache::prelude::*;
     ///
     /// struct ViewModel {
     ///     counter: Rc<Signal<i32>>,
@@ -165,7 +165,7 @@ impl Effect {
     ///
     /// ```
     /// use std::{cell::Cell, rc::Rc};
-    /// use reactive_cache::Effect;
+    /// use reactive_cache::prelude::*;
     /// use reactive_macros::signal;
     ///
     /// signal!(static mut FLAG: bool = true;);

@@ -16,6 +16,7 @@ use syn::{Ident, ItemFn, ItemStatic, ReturnType, parse_macro_input};
 /// # Examples
 ///
 /// ```rust
+/// use reactive_cache::prelude::*;
 /// use reactive_macros::signal;
 ///
 /// signal!(static mut A: i32 = 10;);
@@ -90,6 +91,7 @@ pub fn signal(input: TokenStream) -> TokenStream {
 /// # Examples
 ///
 /// ```rust
+/// use reactive_cache::prelude::*;
 /// use reactive_macros::memo;
 ///
 /// #[memo]
@@ -180,6 +182,7 @@ pub fn memo(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// # Examples
 ///
 /// ```rust
+/// use reactive_cache::prelude::*;
 /// use reactive_macros::evaluate;
 ///
 /// fn print(msg: String) {

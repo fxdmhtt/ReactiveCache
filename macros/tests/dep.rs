@@ -2,6 +2,7 @@
 
 use std::cell::Cell;
 
+use reactive_cache::prelude::*;
 use reactive_macros::{memo, signal};
 
 thread_local! {
